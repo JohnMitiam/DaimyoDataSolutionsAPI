@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using Microsoft.Extensions.Logging;
-using DaimyoDataSolutions.Application.DTOs.User;
 using DaimyoDataSolutions.Application.Interfaces.Data;
 using DaimyoDataSolutions.Application.Interfaces.Services;
 using DaimyoDataSolutions.Application.Interfaces.Validator;
@@ -8,17 +7,18 @@ using DaimyoDataSolutions.Application.ResourceParameters;
 using DaimyoDataSolutions.Application.ResultModels;
 using DaimyoDataSolutions.Application.Services.Base;
 using DaimyoDataSolutions.Domain.Entities;
+using DaimyoDataSolutions.Application.DTOs.Product;
 
 namespace DaimyoDataSolutions.Application.Services
 {
-    public class UserService : BaseService, IUserService
+    public class ProductService : BaseService, IProductService
     {
-        private readonly IUserValidator _validator;
-        private readonly ILogger<UserService> _logger;
+        private readonly IProductValidator _validator;
+        private readonly ILogger<ProductService> _logger;
         private readonly IMapper _mapper;
         private readonly IUnitOfWork _unitOfWork;
 
-        public UserService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<UserService> logger, IUserValidator validator)
+        public ProductService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<ProductService> logger, IProductValidator validator)
         {
             _validator = validator;
             _logger = logger;
@@ -26,11 +26,11 @@ namespace DaimyoDataSolutions.Application.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<IServiceResult> CreateAsync(CreateUserDTO user)
+        public async Task<IServiceResult> CreateAsync(CreateProductDTO product)
         {
             try
             {
-                var record = _mapper.Map<User>(user);
+                var record = _mapper.Map<Product>(product);
                 //record.CreatedBy = userId;
                 record.DateCreated = DateTime.UtcNow;
 
@@ -42,11 +42,11 @@ namespace DaimyoDataSolutions.Application.Services
 
                 _unitOfWork.CreateTransaction();
 
-                await _unitOfWork.Users.CreateAsync(record);
+                await _unitOfWork.Products.CreateAsync(record);
 
                 _unitOfWork.Commit();
 
-                return SuccessResult(_mapper.Map<ViewUserDTO>(record));
+                return SuccessResult(_mapper.Map<ViewProductDTO>(record));
             }
             catch (Exception ex)
             {
@@ -57,19 +57,25 @@ namespace DaimyoDataSolutions.Application.Services
             }
         }
 
-        public async Task<IServiceResult> DeleteAsync(int id)
+        public async Task<IServiceResult> DeleteAsync(int productId)
         {
             try
             {
-                var record = await _unitOfWork.Users.GetByIdAsync(id);
+                var record = await _unitOfWork.Products.GetByIdAsync(productId);
                 if (record == null)
                 {
                     return FailedResult(ServiceConstants.RecordNotFound);
                 }
 
+                //var validationResult = await _validator.IsValidForDeleteAsync(record);
+                //if (!validationResult.isSuccess)
+                //{
+                //    return FailedResult(validationResult.errorMessages);
+                //}
+
                 _unitOfWork.CreateTransaction();
 
-                await _unitOfWork.Users.DeleteAsync(record.Id);
+                await _unitOfWork.Products.DeleteAsync(record.Id);
 
                 _unitOfWork.Commit();
 
@@ -84,14 +90,14 @@ namespace DaimyoDataSolutions.Application.Services
             }
         }
 
-        public async Task<IServiceResult> GetAsync(UserResourceParameters resourceParameters)
+        public async Task<IServiceResult> GetAsync(ProductResourceParameters resourceParameters)
         {
             try
             {
-                var result = await _unitOfWork.Users.GetAsync(resourceParameters).ConfigureAwait(false);
+                var result = await _unitOfWork.Products.GetAsync(resourceParameters).ConfigureAwait(false);
 
-                var paginatedResult = new PaginatedList<ViewUserDTO>(
-                    _mapper.Map<IEnumerable<ViewUserDTO>>(result.users).ToList(),
+                var paginatedResult = new PaginatedList<ViewProductDTO>(
+                    _mapper.Map<IEnumerable<ViewProductDTO>>(result.products).ToList(),
                     result.recordCount,
                     resourceParameters.Page,
                     resourceParameters.PageSize);
@@ -110,13 +116,13 @@ namespace DaimyoDataSolutions.Application.Services
         {
             try
             {
-                var record = await _unitOfWork.Users.GetByIdAsync(productId);
+                var record = await _unitOfWork.Products.GetByIdAsync(productId);
                 if (record == null)
                 {
                     return FailedResult(ServiceConstants.RecordNotFound);
                 }
 
-                var result = _mapper.Map<ViewUserDTO>(record);
+                var result = _mapper.Map<ViewProductDTO>(record);
 
                 return SuccessResult(result);
             }
@@ -128,15 +134,15 @@ namespace DaimyoDataSolutions.Application.Services
             }
         }
 
-        public async Task<IServiceResult> UpdateAsync(int userId, UpdateUserDTO users)
+        public async Task<IServiceResult> UpdateAsync(int productId, UpdateProductDTO products)
         {
             try
             {
-                var record = await _unitOfWork.Users.GetByIdAsync(userId).ConfigureAwait(false);
+                var record = await _unitOfWork.Products.GetByIdAsync(productId).ConfigureAwait(false);
                 if (record == null)
                     return FailedResult(ServiceConstants.RecordNotFound);
 
-                _mapper.Map(users, record);
+                _mapper.Map(products, record);
                 record.DateUpdated = DateTime.UtcNow;
 
                 var validationResult = _validator.IsValid(record);
@@ -146,7 +152,7 @@ namespace DaimyoDataSolutions.Application.Services
                 }
 
                 _unitOfWork.CreateTransaction();
-                await _unitOfWork.Users.UpdateAsync(record).ConfigureAwait(false);
+                await _unitOfWork.Products.UpdateAsync(record).ConfigureAwait(false);
 
                 _unitOfWork.Commit();
 

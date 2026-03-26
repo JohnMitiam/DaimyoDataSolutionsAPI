@@ -4,6 +4,7 @@ using DaimyoDataSolutions.Application.Interfaces.Validator;
 using DaimyoDataSolutions.Application.Mappings;
 using DaimyoDataSolutions.Application.Services;
 using DaimyoDataSolutions.Application.Validators.UserValidators;
+using DaimyoDataSolutions.Application.Validators.ProductValidators;
 
 namespace DaimyoDataSolutions.Application
 {
@@ -13,8 +14,10 @@ namespace DaimyoDataSolutions.Application
         {
             services.AddAutoMapper(typeof(MappingProfile));
             services.AddTransient<IUserService, UserService>();
+            services.AddTransient<IProductService, ProductService>();
 
             services.AddTransient<IUserValidator, UserValidator>();
+            services.AddTransient<IProductValidator, ProductValidator>();
 
             return services;
         }

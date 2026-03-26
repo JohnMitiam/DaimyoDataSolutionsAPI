@@ -29,11 +29,5 @@ namespace DaimyoDataSolutions.Application.Validators.UserValidators
             var result = userValidator.IsValid(value);
             return (result.isSuccess, result.errorMessages);
         }
-
-        //public Task<(bool isSuccess, List<string>? errorMessages)> IsValidForDeleteAsync(User user)
-        //{
-        //    var canDeleteValidator = new UserCanDeleteValidators(_userRepository);
-        //    return canDeleteValidator.IsValidAsync(user);
-        //}
     }
 }
