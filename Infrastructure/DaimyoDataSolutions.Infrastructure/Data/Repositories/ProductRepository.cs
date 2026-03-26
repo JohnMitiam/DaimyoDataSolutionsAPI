@@ -6,37 +6,35 @@ using System.Data;
 
 namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
 {
-    public class UserRepository : IUserRepository
+    public class ProductRepository : IProductRepository
     {
         private readonly DatabaseSession _dbSession;
 
-        public UserRepository(DatabaseSession dbSession)
+        public ProductRepository(DatabaseSession dbSession)
         {
             _dbSession = dbSession;
         }
 
-        public async Task<User> CreateAsync(User user)
+        public async Task<Product> CreateAsync(Product product)
         {
-            var query = $@"sp_CreateUser";
+            var query = $@"sp_CreateProduct";
 
             var queryParams = new
             {
-                p_UserName = user.UserName,
-                p_Email = user.Email,
-                p_Status = user.Status,
-                p_IsActive = user.IsActive,
-                p_CreatedBy = user.CreatedBy,
-                p_DateCreated = user.DateCreated
+                Name = product.Name,
+                Description = product.Description,
+                Price = product.Price,
+                IsActive = product.IsActive,
+                CreatedBy = product.CreatedBy,
+                DateCreated = product.DateCreated
             };
 
-            user.Id = await _dbSession.Connection
-                .ExecuteScalarAsync<int>(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure)
-                .ConfigureAwait(false);
+            product.Id = await _dbSession.Connection.ExecuteScalarAsync<int>(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure);
 
-            return user;
+            return product;
         }
 
-        public async Task<(IEnumerable<User> users, int recordCount)> GetAsync(UserResourceParameters resourceParameters)
+        public async Task<(IEnumerable<Product> products, int recordCount)> GetAsync(ProductResourceParameters resourceParameters)
         {
             var queryParamBuilder = new QueryParameters(
                 resourceParameters.Search ?? string.Empty,
@@ -45,8 +43,8 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
                 resourceParameters.PageSize
             );
 
-            var baseDataQuery = @"SELECT * FROM Users WHERE IsDeleted = 0 ";
-            var baseCountQuery = @"SELECT COUNT(*) FROM Users WHERE IsDeleted = 0 ";
+            var baseDataQuery = @"SELECT * FROM Products WHERE IsDeleted = 0 ";
+            var baseCountQuery = @"SELECT COUNT(*) FROM Products WHERE IsDeleted = 0 ";
 
             var searchSQL = queryParamBuilder.GetSearchSQLQuery();
             var filterSQL = queryParamBuilder.GetFilterSQLQuery();
@@ -55,35 +53,35 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
             var finalDataQuery = baseDataQuery + searchSQL + filterSQL + paginationSQL;
             var finalCountQuery = baseCountQuery + searchSQL + filterSQL;
 
-            var result = await _dbSession.Connection.QueryAsync<User>(finalDataQuery, queryParamBuilder.Parameters);
+            var result = await _dbSession.Connection.QueryAsync<Product>(finalDataQuery, queryParamBuilder.Parameters);
             var totalCount = await _dbSession.Connection.ExecuteScalarAsync<int>(finalCountQuery, queryParamBuilder.Parameters);
 
             return (result, totalCount);
         }
 
-        public async Task<User?> GetByIdAsync(int userId)
+        public async Task<Product?> GetByIdAsync(int productId)
         {
-            var query = $@"sp_GetUserById";
+            var query = $@"sp_GetProductById";
 
             var queryParams = new
             {
-                UserID = userId
+                ProductID = productId
             };
 
             var result = await _dbSession.Connection
-                .QueryFirstOrDefaultAsync<User>(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure)
+                .QueryFirstOrDefaultAsync<Product>(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure)
                 .ConfigureAwait(false);
 
             return result;
         }
 
-        public async Task<bool> DeleteAsync(int userId)
+        public async Task<bool> DeleteAsync(int productId)
         {
-            var query = $@"sp_DeleteUser";
+            var query = $@"sp_DeleteProduct";
 
             var queryParams = new
             {
-                UserID = userId
+                ProductID = productId
             };
 
             await _dbSession.Connection.ExecuteAsync(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure);
@@ -91,20 +89,19 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
             return true;
         }
 
-        public async Task<bool> UpdateAsync(User user)
+        public async Task<bool> UpdateAsync(Product product)
         {
-            var query = $@"sp_UpdateUser";
+            var query = $@"sp_UpdateProduct";
 
             var queryParams = new
             {
-                UserID = user.Id,
-                UserName = user.UserName,
-                Email = user.Email,
-                Phone = user.Phone,
-                Status = user.Status,
-                IsActive = user.IsActive,
-                UpdatedBy = user.UpdatedBy,
-                DateUpdated = user.DateUpdated
+                ProductID = product.Id,
+                Name = product.Name,
+                Description = product.Description,
+                Price = product.Price,
+                IsActive = product.IsActive,
+                UpdatedBy = product.UpdatedBy,
+                DateUpdated = product.DateUpdated,
             };
 
             await _dbSession.Connection

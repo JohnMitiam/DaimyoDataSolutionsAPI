@@ -1,6 +1,6 @@
-﻿namespace DaimyoDataSolutions.Application.DTOs.User
+﻿namespace DaimyoDataSolutions.Application.DTOs.Product
 {
-    public class ViewUserDTO : BaseUserDTO
+    public class ViewProductDTO : BaseProductDTO
     {
         public int Id { get; set; }
         public string CreatedBy { get; set; } = null!;

@@ -7,9 +7,9 @@ namespace DaimyoDataSolutions.Application.Interfaces.Services
     public interface IUserService
     {
         Task<IServiceResult> GetAsync(UserResourceParameters resourceParameters);
-        Task<IServiceResult> GetByIdAsync(int uId);
-        Task<IServiceResult> CreateAsync(CreateUserDTO user, string userId);
-        Task<IServiceResult> UpdateAsync(int uId, UpdateUserDTO user, string userId);
-        Task<IServiceResult> DeleteAsync(int uId, string userId);
+        Task<IServiceResult> GetByIdAsync(int userId);
+        Task<IServiceResult> CreateAsync(CreateUserDTO user);
+        Task<IServiceResult> UpdateAsync(int userId, UpdateUserDTO user);
+        Task<IServiceResult> DeleteAsync(int userId);
     }
 }

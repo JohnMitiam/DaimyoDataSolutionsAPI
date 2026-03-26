@@ -16,6 +16,7 @@ namespace DaimyoDataSolutions.Infrastructure
 
             // Stored Procedure Repositories
             services.AddTransient<IUserRepository, UserRepository>();
+            services.AddTransient<IProductRepository, ProductRepository>();
 
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 

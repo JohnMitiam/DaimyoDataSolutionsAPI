@@ -1,31 +1,31 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using DaimyoDataSolutions.API.Authentications;
-using DaimyoDataSolutions.Application.DTOs.User;
+﻿using DaimyoDataSolutions.API.Authentications;
+using DaimyoDataSolutions.Application.DTOs.Product;
 using DaimyoDataSolutions.Application.Interfaces.Services;
 using DaimyoDataSolutions.Application.ResourceParameters;
 using DaimyoDataSolutions.Application.ResultModels;
+using Microsoft.AspNetCore.Mvc;
 
 namespace DaimyoDataSolutions.API.Controllers
 {
-    [Route("api/users")]
+    [Route("api/products")]
     [ApiController]
-    public class UserController : ControllerBase
+    public class ProductController : ControllerBase
     {
-        private readonly IUserService _user;
+        private readonly IProductService _product;
         private IServiceResult ServiceResult { get; set; } = null!;
-        public UserController(IUserService user)
+        public ProductController(IProductService product)
         {
-            _user = user;
+            _product = product;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetUsersAsync([FromQuery] UserResourceParameters resourceParameters)
+        public async Task<IActionResult> GetProductsAsync([FromQuery] ProductResourceParameters resourceParameters)
         {
-            ServiceResult = await _user.GetAsync(resourceParameters);
+            ServiceResult = await _product.GetAsync(resourceParameters);
 
             if (ServiceResult.IsSuccess)
             {
-                var result = ServiceResult as ServiceResult<PaginatedList<ViewUserDTO>>;
+                var result = ServiceResult as ServiceResult<PaginatedList<ViewProductDTO>>;
 
                 if (result != null)
                 {
@@ -43,14 +43,14 @@ namespace DaimyoDataSolutions.API.Controllers
             return BadRequest(ServiceResult);
         }
 
-        [HttpGet("{id}", Name = nameof(UserController.GetUserByIdAsync))]
-        public async Task<IActionResult> GetUserByIdAsync(int id)
+        [HttpGet("{id}", Name = nameof(ProductController.GetProductByIdAsync))]
+        public async Task<IActionResult> GetProductByIdAsync(int id)
         {
-            ServiceResult = await _user.GetByIdAsync(id);
+            ServiceResult = await _product.GetByIdAsync(id);
 
             if (ServiceResult.IsSuccess)
             {
-                var result = ServiceResult as ServiceResult<ViewUserDTO>;
+                var result = ServiceResult as ServiceResult<ViewProductDTO>;
                 if (result != null)
                 {
                     return Ok(result);
@@ -66,18 +66,18 @@ namespace DaimyoDataSolutions.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateUserAsync([FromBody] CreateUserDTO user)
+        public async Task<IActionResult> CreateProductAsync([FromBody] CreateProductDTO product)
         {
-            var userId = User.GetUserId();
+            //var userId = User.GetUserId();
 
-            ServiceResult = await _user.CreateAsync(user);
+            ServiceResult = await _product.CreateAsync(product);
 
             if (ServiceResult.IsSuccess)
             {
-                var result = ServiceResult as ServiceResult<ViewUserDTO>;
+                var result = ServiceResult as ServiceResult<ViewProductDTO>;
                 if (result != null)
                 {
-                    return CreatedAtRoute(nameof(UserController.GetUserByIdAsync), new { id = result.Data.Id }, result);
+                    return CreatedAtRoute(nameof(ProductController.GetProductByIdAsync), new { id = result.Data.Id }, result);
                 }
             }
 
@@ -85,17 +85,17 @@ namespace DaimyoDataSolutions.API.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateUserAsync(int id, [FromBody] UpdateUserDTO user)
+        public async Task<IActionResult> UpdateProductAsync(int id, [FromBody] UpdateProductDTO product)
         {
 
-            var userId = User.GetUserId();
+            //var userId = User.GetUserId();
 
-            if (id == 0 || id != user.Id)
+            if (id == 0 || id != product.Id)
             {
                 return BadRequest();
             }
 
-            ServiceResult = await _user.UpdateAsync(id, user);
+            ServiceResult = await _product.UpdateAsync(id, product);
 
             if (ServiceResult.IsSuccess)
             {
@@ -111,16 +111,16 @@ namespace DaimyoDataSolutions.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteUserAsync([FromRoute] int id)
+        public async Task<IActionResult> DeleteProductAsync([FromRoute] int id)
         {
-            var userId = User.GetUserId();
+            //var userId = User.GetUserId();
 
             if (id == 0)
             {
                 return BadRequest();
             }
 
-            ServiceResult = await _user.DeleteAsync(id);
+            ServiceResult = await _product.DeleteAsync(id);
 
             if (ServiceResult.IsSuccess)
             {
