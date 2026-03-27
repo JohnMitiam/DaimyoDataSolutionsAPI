@@ -8,21 +8,26 @@ namespace DaimyoDataSolutions.Infrastructure.Data
         private readonly DatabaseSession _dbSession;
         private readonly IUserRepository _userRepository;
         private readonly IProductRepository _productRepository;
+        private readonly ICategoryRepository _categoryRepository;
 
         public UnitOfWork
             (
                 DatabaseSession dbSession,
                 IUserRepository userRepository,
-                IProductRepository productRepository
+                IProductRepository productRepository,
+                ICategoryRepository categoryRepository
             )
         {
             _dbSession = dbSession;
             _userRepository = userRepository;
             _productRepository = productRepository;
+            _categoryRepository = categoryRepository;
         }
 
         public IUserRepository Users => _userRepository;
         public IProductRepository Products => _productRepository;
+
+        public ICategoryRepository Categories => _categoryRepository;
 
         public void Commit()
         {
