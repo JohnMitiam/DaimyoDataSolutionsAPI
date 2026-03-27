@@ -4,6 +4,7 @@
     {
         IUserRepository Users { get; }
         IProductRepository Products { get; }
+        ICategoryRepository Categories { get; }
 
         void CreateTransaction();
         void Commit();
