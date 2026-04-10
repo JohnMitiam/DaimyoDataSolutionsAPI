@@ -2,7 +2,7 @@
 {
     public interface IUnitOfWork : IDisposable
     {
-        IUserRepository Users { get; }
+        IAffiliateRepository Affiliate { get; }
         IProductRepository Products { get; }
         ICategoryRepository Categories { get; }
 

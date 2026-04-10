@@ -31,7 +31,7 @@ namespace DaimyoDataSolutions.Application.Services
             try
             {
                 var record = _mapper.Map<Product>(product);
-                //record.CreatedBy = userId;
+                //record.CreatedBy = affiliateId;
                 record.DateCreated = DateTime.UtcNow;
 
                 var validationResult = _validator.IsValid(record);

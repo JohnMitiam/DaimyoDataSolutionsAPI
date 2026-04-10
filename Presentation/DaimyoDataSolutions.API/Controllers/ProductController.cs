@@ -68,8 +68,6 @@ namespace DaimyoDataSolutions.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateProductAsync([FromBody] CreateProductDTO product)
         {
-            //var userId = User.GetUserId();
-
             ServiceResult = await _product.CreateAsync(product);
 
             if (ServiceResult.IsSuccess)
@@ -87,9 +85,6 @@ namespace DaimyoDataSolutions.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateProductAsync(int id, [FromBody] UpdateProductDTO product)
         {
-
-            //var userId = User.GetUserId();
-
             if (id == 0 || id != product.Id)
             {
                 return BadRequest();
@@ -113,7 +108,6 @@ namespace DaimyoDataSolutions.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProductAsync([FromRoute] int id)
         {
-            //var userId = User.GetUserId();
 
             if (id == 0)
             {

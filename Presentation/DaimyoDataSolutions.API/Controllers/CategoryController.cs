@@ -68,7 +68,7 @@ namespace DaimyoDataSolutions.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateCategoryAsync([FromBody] CreateCategoryDTO category)
         {
-            //var userId = User.GetUserId();
+            //var affiliateId = User.GetUserId();
 
             ServiceResult = await _category.CreateAsync(category);
 
@@ -88,7 +88,7 @@ namespace DaimyoDataSolutions.API.Controllers
         public async Task<IActionResult> UpdateCategoryAsync(int id, [FromBody] UpdateCategoryDTO category)
         {
 
-            //var userId = User.GetUserId();
+            //var affiliateId = User.GetUserId();
 
             if (id == 0 || id != category.Id)
             {
@@ -113,7 +113,7 @@ namespace DaimyoDataSolutions.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCategoryAsync([FromRoute] int id)
         {
-            //var userId = User.GetUserId();
+            //var affiliateId = User.GetUserId();
 
             if (id == 0)
             {

@@ -65,7 +65,7 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
 
             var queryParams = new
             {
-                ProductID = productId
+                ID = productId
             };
 
             var result = await _dbSession.Connection
@@ -81,7 +81,7 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
 
             var queryParams = new
             {
-                ProductID = productId
+                ID = productId
             };
 
             await _dbSession.Connection.ExecuteAsync(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure);
@@ -95,7 +95,7 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
 
             var queryParams = new
             {
-                ProductID = product.Id,
+                ID = product.Id,
                 Name = product.Name,
                 Description = product.Description,
                 Price = product.Price,

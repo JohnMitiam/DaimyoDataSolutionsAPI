@@ -11,11 +11,10 @@ namespace DaimyoDataSolutions.Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
-
             services.AddScoped<DatabaseSession>();
 
             // Stored Procedure Repositories
-            services.AddTransient<IUserRepository, UserRepository>();
+            services.AddTransient<IAffiliateRepository, AffiliateRepository>();
             services.AddTransient<IProductRepository, ProductRepository>();
             services.AddTransient<ICategoryRepository, CategoryRepository>();
 

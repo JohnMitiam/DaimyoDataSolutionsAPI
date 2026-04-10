@@ -30,10 +30,10 @@ namespace DaimyoDataSolutions.Application.Validators.ProductValidators
             return (result.isSuccess, result.errorMessages);
         }
 
-        //public Task<(bool isSuccess, List<string>? errorMessages)> IsValidForDeleteAsync(User user)
+        //public Task<(bool isSuccess, List<string>? errorMessages)> IsValidForDeleteAsync(User affiliate)
         //{
-        //    var canDeleteValidator = new UserCanDeleteValidators(_userRepository);
-        //    return canDeleteValidator.IsValidAsync(user);
+        //    var canDeleteValidator = new UserCanDeleteValidators(_affiliateRepository);
+        //    return canDeleteValidator.IsValidAsync(affiliate);
         //}
     }
 }

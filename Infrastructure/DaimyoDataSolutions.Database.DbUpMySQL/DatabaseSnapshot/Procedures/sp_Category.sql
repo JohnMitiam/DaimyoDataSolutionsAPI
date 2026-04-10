@@ -22,8 +22,6 @@ BEGIN
 		Name,
 		Description,
 		Icon,
-		Price,
-		IsActive,
 		CreatedBy,
 		DateCreated,
 		0
@@ -41,7 +39,7 @@ DROP PROCEDURE IF EXISTS `sp_GetCategoryId`;
 
 DELIMITER $$
 CREATE  PROCEDURE `sp_GetCategoryById`(
-	IN `CategoryID` INT
+	IN `ID` INT
 )
 BEGIN
 	SELECT 
@@ -50,7 +48,7 @@ BEGIN
             Description,
 			Icon
 		FROM Category 
-        WHERE ID = CategoryID;
+        WHERE ID = ID;
 END$$
 
 DELIMITER ;
@@ -65,8 +63,8 @@ CREATE  PROCEDURE `sp_UpdateCategory`(
 		IN `Description` VARCHAR(100),
 		IN `Icon` MEDIUMTEXT,
 		IN `UpdatedBy` VARCHAR(50),
-		IN `DateUpdated` DATETIME
-		IN `CategoryID` INT
+		IN `DateUpdated` DATETIME,
+		IN `ID` INT
 )
 BEGIN
 		UPDATE Category SET
@@ -75,7 +73,7 @@ BEGIN
 			Icon = Icon,
 			UpdatedBy = UpdatedBy,
 			DateUpdated = DateUpdated
-		WHERE ID = CategoryID;
+		WHERE ID = ID;
 END$$
 
 DELIMITER ;
@@ -85,11 +83,11 @@ DROP PROCEDURE IF EXISTS `sp_DeleteCategory`;
 
 DELIMITER $$
 CREATE PROCEDURE `sp_DeleteCategory`(
-	IN `CategoryID` INT
+	IN `ID` INT
 )
 BEGIN
 	DELETE FROM Category
-		WHERE ID = CategoryID;
+		WHERE ID = ID;
 END$$
 
 DELIMITER ;

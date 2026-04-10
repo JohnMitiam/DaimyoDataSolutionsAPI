@@ -1,31 +1,31 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using DaimyoDataSolutions.API.Authentications;
-using DaimyoDataSolutions.Application.DTOs.User;
+using DaimyoDataSolutions.Application.DTOs.Affiliate;
 using DaimyoDataSolutions.Application.Interfaces.Services;
 using DaimyoDataSolutions.Application.ResourceParameters;
 using DaimyoDataSolutions.Application.ResultModels;
 
 namespace DaimyoDataSolutions.API.Controllers
 {
-    [Route("api/users")]
+    [Route("api/affiliate")]
     [ApiController]
-    public class UserController : ControllerBase
+    public class AffiliateController : ControllerBase
     {
-        private readonly IUserService _user;
+        private readonly IAffiliateService _affiliate;
         private IServiceResult ServiceResult { get; set; } = null!;
-        public UserController(IUserService user)
+        public AffiliateController(IAffiliateService affiliate)
         {
-            _user = user;
+            _affiliate = affiliate;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetUsersAsync([FromQuery] UserResourceParameters resourceParameters)
+        public async Task<IActionResult> GetAffiliatesAsync([FromQuery] AffiliateResourceParameters resourceParameters)
         {
-            ServiceResult = await _user.GetAsync(resourceParameters);
+            ServiceResult = await _affiliate.GetAsync(resourceParameters);
 
             if (ServiceResult.IsSuccess)
             {
-                var result = ServiceResult as ServiceResult<PaginatedList<ViewUserDTO>>;
+                var result = ServiceResult as ServiceResult<PaginatedList<ViewAffiliateDTO>>;
 
                 if (result != null)
                 {
@@ -43,14 +43,14 @@ namespace DaimyoDataSolutions.API.Controllers
             return BadRequest(ServiceResult);
         }
 
-        [HttpGet("{id}", Name = nameof(UserController.GetUserByIdAsync))]
-        public async Task<IActionResult> GetUserByIdAsync(int id)
+        [HttpGet("{id}", Name = nameof(AffiliateController.GetAffiliateByIdAsync))]
+        public async Task<IActionResult> GetAffiliateByIdAsync(int id)
         {
-            ServiceResult = await _user.GetByIdAsync(id);
+            ServiceResult = await _affiliate.GetByIdAsync(id);
 
             if (ServiceResult.IsSuccess)
             {
-                var result = ServiceResult as ServiceResult<ViewUserDTO>;
+                var result = ServiceResult as ServiceResult<ViewAffiliateDTO>;
                 if (result != null)
                 {
                     return Ok(result);
@@ -66,18 +66,16 @@ namespace DaimyoDataSolutions.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateUserAsync([FromBody] CreateUserDTO user)
+        public async Task<IActionResult> CreateAffiliateAsync([FromBody] CreateAffiliateDTO affiliate)
         {
-            var userId = User.GetUserId();
-
-            ServiceResult = await _user.CreateAsync(user);
+            ServiceResult = await _affiliate.CreateAsync(affiliate);
 
             if (ServiceResult.IsSuccess)
             {
-                var result = ServiceResult as ServiceResult<ViewUserDTO>;
+                var result = ServiceResult as ServiceResult<ViewAffiliateDTO>;
                 if (result != null)
                 {
-                    return CreatedAtRoute(nameof(UserController.GetUserByIdAsync), new { id = result.Data.Id }, result);
+                    return CreatedAtRoute(nameof(AffiliateController.GetAffiliateByIdAsync), new { id = result.Data.Id }, result);
                 }
             }
 
@@ -85,17 +83,14 @@ namespace DaimyoDataSolutions.API.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateUserAsync(int id, [FromBody] UpdateUserDTO user)
+        public async Task<IActionResult> UpdateAffiliateAsync(int id, [FromBody] UpdateAffiliateDTO affiliate)
         {
-
-            var userId = User.GetUserId();
-
-            if (id == 0 || id != user.Id)
+            if (id == 0 || id != affiliate.Id)
             {
                 return BadRequest();
             }
 
-            ServiceResult = await _user.UpdateAsync(id, user);
+            ServiceResult = await _affiliate.UpdateAsync(id, affiliate);
 
             if (ServiceResult.IsSuccess)
             {
@@ -111,16 +106,14 @@ namespace DaimyoDataSolutions.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteUserAsync([FromRoute] int id)
+        public async Task<IActionResult> DeleteAffiliateAsync([FromRoute] int id)
         {
-            var userId = User.GetUserId();
-
             if (id == 0)
             {
                 return BadRequest();
             }
 
-            ServiceResult = await _user.DeleteAsync(id);
+            ServiceResult = await _affiliate.DeleteAsync(id);
 
             if (ServiceResult.IsSuccess)
             {

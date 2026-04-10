@@ -64,7 +64,7 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
 
             var queryParams = new
             {
-                CategoryID = categoryId
+                ID = categoryId
             };
 
             var result = await _dbSession.Connection
@@ -80,7 +80,7 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
 
             var queryParams = new
             {
-                CategoryID = categoryId
+                ID = categoryId
             };
 
             await _dbSession.Connection.ExecuteAsync(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure);
@@ -94,7 +94,7 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
 
             var queryParams = new
             {
-                CategoryID = category.Id,
+                ID = category.Id,
                 Name = category.Name,
                 Description = category.Description,
                 Icon = category.Icon,

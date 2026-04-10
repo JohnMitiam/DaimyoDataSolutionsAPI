@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
 using DaimyoDataSolutions.Application.DTOs.Category;
 using DaimyoDataSolutions.Application.DTOs.Product;
-using DaimyoDataSolutions.Application.DTOs.User;
+using DaimyoDataSolutions.Application.DTOs.Affiliate;
 using DaimyoDataSolutions.Domain.Entities;
 
 namespace DaimyoDataSolutions.Application.Mappings
@@ -10,9 +10,9 @@ namespace DaimyoDataSolutions.Application.Mappings
     {
         public MappingProfile()
         {
-            CreateMap<User, CreateUserDTO>().ReverseMap();
-            CreateMap<User, UpdateUserDTO>().ReverseMap();
-            CreateMap<User, ViewUserDTO>();
+            CreateMap<Affiliate, CreateAffiliateDTO>().ReverseMap();
+            CreateMap<Affiliate, UpdateAffiliateDTO>().ReverseMap();
+            CreateMap<Affiliate, ViewAffiliateDTO>();
 
             CreateMap<Product, CreateProductDTO>().ReverseMap();
             CreateMap<Product, UpdateProductDTO>().ReverseMap();

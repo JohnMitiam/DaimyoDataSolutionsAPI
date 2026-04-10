@@ -7,7 +7,7 @@ CREATE PROCEDURE `sp_CreateProduct`(
 	IN `Description` VARCHAR(150),
 	IN `Price` DECIMAL(20,0),
 	IN `IsActive` TINYINT(1),
-	IN `CreatedBy` VARCHAR(50)
+	IN `CreatedBy` VARCHAR(50),
 	IN `DateCreated` DATETIME
 	)
 BEGIN
@@ -42,7 +42,7 @@ DROP PROCEDURE IF EXISTS `sp_GetProductId`;
 
 DELIMITER $$
 CREATE  PROCEDURE `sp_GetProductById`(
-	IN `ProductID` INT
+	IN `ID` INT
 )
 BEGIN
 	SELECT 
@@ -51,7 +51,7 @@ BEGIN
             Description,
             IsActive
 		FROM Products 
-        WHERE ID = ProductID;
+        WHERE ID = ID;
 END$$
 
 DELIMITER ;
@@ -67,8 +67,8 @@ CREATE  PROCEDURE `sp_UpdateProduct`(
 		IN `Description` VARCHAR(150),
 		IN `IsActive` TINYINT(1),
 		IN `UpdatedBy` VARCHAR(50),
-		IN `DateUpdated` DATETIME
-		IN `ProductID` INT
+		IN `DateUpdated` DATETIME,
+		IN `ID` INT
 )
 BEGIN
 		UPDATE Products SET
@@ -78,7 +78,7 @@ BEGIN
 			IsActive = IsActive,
 			UpdatedBy = UpdatedBy,
 			DateUpdated = DateUpdated
-		WHERE ID = ProductID;
+		WHERE ID = ID;
 END$$
 
 DELIMITER ;
@@ -88,11 +88,11 @@ DROP PROCEDURE IF EXISTS `sp_DeleteProduct`;
 
 DELIMITER $$
 CREATE PROCEDURE `sp_DeleteProduct`(
-	IN `ProductID` INT
+	IN `ID` INT
 )
 BEGIN
 	DELETE FROM Products
-		WHERE ID = ProductID;
+		WHERE ID = ID;
 END$$
 
 DELIMITER ;

@@ -6,25 +6,25 @@ namespace DaimyoDataSolutions.Infrastructure.Data
     public class UnitOfWork : IUnitOfWork
     {
         private readonly DatabaseSession _dbSession;
-        private readonly IUserRepository _userRepository;
+        private readonly IAffiliateRepository _affiliateRepository;
         private readonly IProductRepository _productRepository;
         private readonly ICategoryRepository _categoryRepository;
 
         public UnitOfWork
             (
                 DatabaseSession dbSession,
-                IUserRepository userRepository,
+                IAffiliateRepository affiliateRepository,
                 IProductRepository productRepository,
                 ICategoryRepository categoryRepository
             )
         {
             _dbSession = dbSession;
-            _userRepository = userRepository;
+            _affiliateRepository = affiliateRepository;
             _productRepository = productRepository;
             _categoryRepository = categoryRepository;
         }
 
-        public IUserRepository Users => _userRepository;
+        public IAffiliateRepository Affiliate => _affiliateRepository;
         public IProductRepository Products => _productRepository;
 
         public ICategoryRepository Categories => _categoryRepository;
