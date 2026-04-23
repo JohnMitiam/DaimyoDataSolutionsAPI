@@ -1,7 +1,7 @@
 CREATE PROCEDURE `sp_DeleteCategory`(
-	IN `ID` INT
+	IN `CategoryID` INT
 )
 BEGIN
 	DELETE FROM Category
-		WHERE ID = ID;
+		WHERE ID = CategoryID;
 END

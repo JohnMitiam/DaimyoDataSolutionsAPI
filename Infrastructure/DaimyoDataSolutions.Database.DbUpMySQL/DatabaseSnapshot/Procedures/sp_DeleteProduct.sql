@@ -1,7 +1,7 @@
 CREATE PROCEDURE `sp_DeleteProduct`(
-	IN `ID` INT
+	IN `ProductID` INT
 )
 BEGIN
 	DELETE FROM Products
-		WHERE ID = ID;
+		WHERE ID = ProductID;
 END
