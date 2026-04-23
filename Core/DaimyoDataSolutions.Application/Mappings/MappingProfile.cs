@@ -14,9 +14,13 @@ namespace DaimyoDataSolutions.Application.Mappings
             CreateMap<Affiliate, UpdateAffiliateDTO>().ReverseMap();
             CreateMap<Affiliate, ViewAffiliateDTO>();
 
-            CreateMap<Product, CreateProductDTO>().ReverseMap();
-            CreateMap<Product, UpdateProductDTO>().ReverseMap();
-            CreateMap<Product, ViewProductDTO>();
+            CreateMap<ProductCategories, ViewProductCategoryDTO>();
+
+            CreateMap<BaseProductDTO, Products>()
+                .ForMember(dest => dest.ProductCategories, opt => opt.Ignore());
+            CreateMap<Products, CreateProductDTO>().ReverseMap();
+            CreateMap<Products, UpdateProductDTO>().ReverseMap();
+            CreateMap<Products, ViewProductDTO>();
 
             CreateMap<Category, CreateCategoryDTO>().ReverseMap();
             CreateMap<Category, UpdateCategoryDTO>().ReverseMap();

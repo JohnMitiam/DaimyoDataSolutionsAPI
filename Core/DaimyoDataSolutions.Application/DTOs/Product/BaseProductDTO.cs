@@ -6,5 +6,6 @@
         public string? Description { get; set; }
         public decimal? Price { get; set; }
         public bool? IsActive { get; set; }
+        //public List<int>? ProductCategoryIds { get; set; } = new();
     }
 }
