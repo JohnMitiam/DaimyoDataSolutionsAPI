@@ -2,5 +2,6 @@
 {
     public class CreateProductDTO : BaseProductDTO
     {
+        public List<int> ProductCategoryIds { get; set; } = new();
     }
 }

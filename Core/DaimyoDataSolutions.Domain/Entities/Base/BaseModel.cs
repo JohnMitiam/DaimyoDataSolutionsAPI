@@ -12,5 +12,7 @@ namespace DaimyoDataSolutions.Domain.Entities.Base
         public string? UpdatedBy { get; set; }
         public DateTime? DateCreated { get; set; }
         public DateTime? DateUpdated { get; set; }
+        // Soft-delete flag
+        public bool IsDeleted { get; set; }
     }
 }

@@ -1,0 +1,7 @@
+CREATE PROCEDURE `sp_DeleteProduct`(
+	IN `ID` INT
+)
+BEGIN
+	DELETE FROM Products
+		WHERE ID = ID;
+END

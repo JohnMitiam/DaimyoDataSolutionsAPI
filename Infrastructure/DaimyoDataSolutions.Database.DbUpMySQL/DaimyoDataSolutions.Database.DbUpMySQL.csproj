@@ -8,12 +8,26 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="dbup-core" Version="6.0.4" />
-    <PackageReference Include="dbup-mysql" Version="6.0.4" />
+    <None Remove="DatabaseSnapshot\Procedures\sp_CreateProduct.sql" />
+    <None Remove="DatabaseSnapshot\Procedures\sp_DeleteProduct.sql" />
+    <None Remove="DatabaseSnapshot\Procedures\sp_GetProductById.sql" />
+    <None Remove="DatabaseSnapshot\Procedures\sp_UpdateProduct.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="dbup-core" Version="6.1.1" />
+    <PackageReference Include="dbup-mysql" Version="6.1.0" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Scripts\Realease 0.1.0\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Include="DatabaseSnapshot\Procedures\sp_CreateProduct.sql" />
+    <Page Include="DatabaseSnapshot\Procedures\sp_DeleteProduct.sql" />
+    <Page Include="DatabaseSnapshot\Procedures\sp_GetProductById.sql" />
+    <Page Include="DatabaseSnapshot\Procedures\sp_UpdateProduct.sql" />
   </ItemGroup>
 
 </Project>

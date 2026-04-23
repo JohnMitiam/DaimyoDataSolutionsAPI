@@ -13,7 +13,8 @@ namespace DaimyoDataSolutions.Application
     {
         public static IServiceCollection AddApplication(this IServiceCollection services)
         {
-            services.AddAutoMapper(typeof(MappingProfile));
+            services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
+
             services.AddTransient<IAffiliateService, AffiliateService>();
             services.AddTransient<IProductService, ProductService>();
             services.AddTransient<ICategoryService, CategoryService>();

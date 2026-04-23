@@ -25,7 +25,8 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
                 Description = category.Description,
                 Icon = category.Icon,
                 CreatedBy = category.CreatedBy,
-                DateCreated = category.DateCreated
+                DateCreated = category.DateCreated,
+                IsDeleted = category.IsDeleted
             };
 
             category.Id = await _dbSession.Connection.ExecuteScalarAsync<int>(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure);

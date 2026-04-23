@@ -1,8 +1,11 @@
-﻿using Dapper;
-using DaimyoDataSolutions.Domain.Entities;
-using DaimyoDataSolutions.Application.Interfaces.Data;
+﻿using DaimyoDataSolutions.Application.Interfaces.Data;
 using DaimyoDataSolutions.Application.ResourceParameters;
+using DaimyoDataSolutions.Domain.Entities;
+using Dapper;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
 {
@@ -10,12 +13,12 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
     {
         private readonly DatabaseSession _dbSession;
 
-        public ProductRepository(DatabaseSession dbSession)
+        public ProductRepository(DatabaseSession _dbSession)
         {
-            _dbSession = dbSession;
+            this._dbSession = _dbSession;
         }
 
-        public async Task<Product> CreateAsync(Product product)
+        public async Task<Products> CreateAsync(Products product)
         {
             var query = $@"sp_CreateProduct";
 
@@ -26,7 +29,8 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
                 Price = product.Price,
                 IsActive = product.IsActive,
                 CreatedBy = product.CreatedBy,
-                DateCreated = product.DateCreated
+                DateCreated = product.DateCreated,
+                IsDeleted = product.IsDeleted,
             };
 
             product.Id = await _dbSession.Connection.ExecuteScalarAsync<int>(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure);
@@ -34,7 +38,29 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
             return product;
         }
 
-        public async Task<(IEnumerable<Product> products, int recordCount)> GetAsync(ProductResourceParameters resourceParameters)
+        public async Task<bool> AddProductCategoriesAsync(int productId, IEnumerable<int> categoryIds)
+        {
+            if (categoryIds == null || !categoryIds.Any()) return true;
+
+            await RemoveProductCategoriesAsync(productId);
+            var uniqueIds = categoryIds.Distinct().ToList();
+
+            var sql = "INSERT INTO ProductCategories (ProductsId, Id) VALUES (@ProductsId, @Id);";
+            var parameters = uniqueIds.Select(id => new { ProductsId = productId, Id = id });
+
+            await _dbSession.Connection.ExecuteAsync(sql, parameters, _dbSession.Transaction);
+            return true;
+        }
+
+        public async Task<bool> RemoveProductCategoriesAsync(int productId)
+        {
+            await _dbSession.Connection.ExecuteAsync(
+                "DELETE FROM ProductCategories WHERE ProductsId = @ProductsId;",
+                new { ProductsId = productId }, _dbSession.Transaction);
+            return true;
+        }
+
+        public async Task<(IEnumerable<Products> products, int recordCount)> GetAsync(ProductResourceParameters resourceParameters)
         {
             var queryParamBuilder = new QueryParameters(
                 resourceParameters.Search ?? string.Empty,
@@ -43,36 +69,74 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
                 resourceParameters.PageSize
             );
 
-            var baseDataQuery = @"SELECT * FROM Products WHERE IsDeleted = 0 ";
-            var baseCountQuery = @"SELECT COUNT(*) FROM Products WHERE IsDeleted = 0 ";
+            var baseQuery = "FROM Products WHERE IsDeleted = 0 ";
+            var dataSql = "SELECT * " + baseQuery + queryParamBuilder.GetSearchSQLQuery() + queryParamBuilder.GetFilterSQLQuery() + queryParamBuilder.GetPaginationSQLQuery();
+            var countSql = "SELECT COUNT(*) " + baseQuery + queryParamBuilder.GetSearchSQLQuery() + queryParamBuilder.GetFilterSQLQuery();
 
-            var searchSQL = queryParamBuilder.GetSearchSQLQuery();
-            var filterSQL = queryParamBuilder.GetFilterSQLQuery();
-            var paginationSQL = queryParamBuilder.GetPaginationSQLQuery();
+            var products = (await _dbSession.Connection.QueryAsync<Products>(dataSql, queryParamBuilder.Parameters)).ToList();
+            var count = await _dbSession.Connection.ExecuteScalarAsync<int>(countSql, queryParamBuilder.Parameters);
 
-            var finalDataQuery = baseDataQuery + searchSQL + filterSQL + paginationSQL;
-            var finalCountQuery = baseCountQuery + searchSQL + filterSQL;
+            if (products.Any())
+            {
+                var productIds = products.Select(p => p.Id).ToList();
 
-            var result = await _dbSession.Connection.QueryAsync<Product>(finalDataQuery, queryParamBuilder.Parameters);
-            var totalCount = await _dbSession.Connection.ExecuteScalarAsync<int>(finalCountQuery, queryParamBuilder.Parameters);
+                // ADD pc.ProductId to the SELECT list here:
+                var sql = @"SELECT pc.ProductsId, c.Id, c.Name 
+                    FROM ProductCategories pc 
+                    INNER JOIN Category c ON pc.Id = c.Id 
+                    WHERE pc.ProductsId IN @Ids";
 
-            return (result, totalCount);
+                var details = await _dbSession.Connection.QueryAsync<dynamic>(sql, new { Ids = productIds }, _dbSession.Transaction);
+
+                foreach (var product in products)
+                {
+                    product.ProductCategories = details
+                        .Where(d => d.ProductsId == product.Id) // This will now work!
+                        .Select(m => new ProductCategories
+                        {
+                            Id = m.Id,
+                            Name = m.Name
+                        }).ToList();
+                }
+            }
+            return (products, count);
         }
 
-        public async Task<Product?> GetByIdAsync(int productId)
+        public async Task<Products?> GetByIdAsync(int productId)
         {
-            var query = $@"sp_GetProductById";
+            var product = await _dbSession.Connection.QueryFirstOrDefaultAsync<Products>(
+                "sp_GetProductById", new { ID = productId }, _dbSession.Transaction, commandType: CommandType.StoredProcedure);
+
+            if (product != null)
+            {
+                var sql = @"SELECT c.Id, c.Name FROM ProductCategories pc 
+                INNER JOIN Category c ON pc.Id = c.Id 
+                WHERE pc.ProductsId = @ProductsId";
+
+                product.ProductCategories = (await _dbSession.Connection.QueryAsync<ProductCategories>(
+                    sql, new { ProductsId = productId }, _dbSession.Transaction)).ToList();
+            }
+            return product;
+        }
+
+        public async Task<bool> UpdateAsync(Products product)
+        {
+            var query = $@"sp_UpdateProduct";
 
             var queryParams = new
-            {
-                ID = productId
+            { 
+                ID = product.Id,
+                Name = product.Name,
+                Description = product.Description,
+                Price = product.Price,
+                IsActive = product.IsActive,
+                UpdatedBy = product.UpdatedBy,
+                DateUpdated = product.DateUpdated
             };
-
-            var result = await _dbSession.Connection
-                .QueryFirstOrDefaultAsync<Product>(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure)
+            await _dbSession.Connection.ExecuteAsync(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure)
                 .ConfigureAwait(false);
 
-            return result;
+            return true;
         }
 
         public async Task<bool> DeleteAsync(int productId)
@@ -85,28 +149,6 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
             };
 
             await _dbSession.Connection.ExecuteAsync(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure);
-
-            return true;
-        }
-
-        public async Task<bool> UpdateAsync(Product product)
-        {
-            var query = $@"sp_UpdateProduct";
-
-            var queryParams = new
-            {
-                ID = product.Id,
-                Name = product.Name,
-                Description = product.Description,
-                Price = product.Price,
-                IsActive = product.IsActive,
-                UpdatedBy = product.UpdatedBy,
-                DateUpdated = product.DateUpdated,
-            };
-
-            await _dbSession.Connection
-                .ExecuteAsync(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure)
-                .ConfigureAwait(false);
 
             return true;
         }

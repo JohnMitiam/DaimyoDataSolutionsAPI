@@ -13,18 +13,16 @@ namespace DaimyoDataSolutions.Application.Validators.ProductValidators
             _productRepository = productRepository;
         }
 
-        public async Task<(bool isSuccess, List<string>? errorMessages)> IsValidAsync(Product value)
+        public async Task<(bool isSuccess, List<string>? errorMessages)> IsValidAsync(Products value)
         {
             return await Task.FromResult(IsValid(value));
         }
 
-        public (bool isSuccess, List<string>? errorMessages) IsValid(Product value)
+        public (bool isSuccess, List<string>? errorMessages) IsValid(Products value)
         {
-            var descriptionLengthValidator = new DescriptionLenghtValidator();
             var nameLengthValidator = new NameLengthValidator();
 
-            var productValidator = descriptionLengthValidator
-                .And(nameLengthValidator);
+            var productValidator = nameLengthValidator;
 
             var result = productValidator.IsValid(value);
             return (result.isSuccess, result.errorMessages);
