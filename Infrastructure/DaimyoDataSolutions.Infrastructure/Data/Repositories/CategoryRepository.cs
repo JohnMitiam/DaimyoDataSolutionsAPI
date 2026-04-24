@@ -81,7 +81,7 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
 
             var queryParams = new
             {
-                ID = categoryId
+                CategoryID = categoryId
             };
 
             await _dbSession.Connection.ExecuteAsync(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure);
