@@ -26,11 +26,12 @@ namespace DaimyoDataSolutions.Application.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<IServiceResult> CreateAsync(CreateProductDTO product)
+        public async Task<IServiceResult> CreateAsync(CreateProductDTO product, string userId)
         {
             try
             {
                 var record = _mapper.Map<Products>(product);
+                record.CreatedBy = userId;
                 record.DateCreated = DateTime.UtcNow;
 
                 var val = _validator.IsValid(record);
@@ -60,7 +61,7 @@ namespace DaimyoDataSolutions.Application.Services
             }
         }
 
-        public async Task<IServiceResult> UpdateAsync(int productId, UpdateProductDTO products)
+        public async Task<IServiceResult> UpdateAsync(int productId, UpdateProductDTO products, string userId)
         {
             try
             {
@@ -70,6 +71,7 @@ namespace DaimyoDataSolutions.Application.Services
 
                 // 2. Map basic properties (Name, Price, etc.) from DTO to Entity
                 _mapper.Map(products, record);
+                record.UpdatedBy = userId;
                 record.DateUpdated = DateTime.UtcNow;
 
                 _unitOfWork.CreateTransaction();
@@ -104,6 +106,23 @@ namespace DaimyoDataSolutions.Application.Services
             }
         }
 
+        public async Task<IServiceResult> GetMyProductsAsync(string userId)
+        {
+            try
+            {
+                var (products, count) = await _unitOfWork.Products.GetMyProductAsync(userId);
+
+                var productDtos = _mapper.Map<IEnumerable<ViewProductDTO>>(products).ToList();
+
+                return SuccessResult(productDtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error in GetMyProductsAsync: {ex.Message}");
+                return FailedResult(ServiceConstants.RequestProcessingError);
+            }
+        }
+
         public async Task<IServiceResult> GetByIdAsync(int productId)
         {
             try
@@ -118,7 +137,7 @@ namespace DaimyoDataSolutions.Application.Services
             }
         }
 
-        public async Task<IServiceResult> DeleteAsync(int productId)
+        public async Task<IServiceResult> DeleteAsync(int productId, string userId)
         {
             try
             {

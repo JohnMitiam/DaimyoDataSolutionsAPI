@@ -8,8 +8,8 @@ namespace DaimyoDataSolutions.Application.Interfaces.Services
     {
         Task<IServiceResult> GetAsync(CategoryResourceParameters resourceParameters);
         Task<IServiceResult> GetByIdAsync(int categoryId);
-        Task<IServiceResult> CreateAsync(CreateCategoryDTO category);
-        Task<IServiceResult> UpdateAsync(int categoryId, UpdateCategoryDTO category);
-        Task<IServiceResult> DeleteAsync(int category);
+        Task<IServiceResult> CreateAsync(CreateCategoryDTO category, string userId);
+        Task<IServiceResult> UpdateAsync(int categoryId, UpdateCategoryDTO category, string userId);
+        Task<IServiceResult> DeleteAsync(int category, string userId);
     }
 }

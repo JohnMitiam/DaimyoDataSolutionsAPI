@@ -10,6 +10,7 @@ namespace DaimyoDataSolutions.Infrastructure.Data
     public class ApplicationDbContext : DbContext
     {
         private readonly IHttpContextAccessor? _httpContextAccessor;
+        public object UserProfiles;
 
         public ApplicationDbContext
             (DbContextOptions<ApplicationDbContext> options,

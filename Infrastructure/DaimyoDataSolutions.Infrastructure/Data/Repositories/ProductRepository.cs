@@ -102,6 +102,54 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
             return (products, count);
         }
 
+        public async Task<(IEnumerable<Products> products, int count)> GetMyProductAsync(string userId)
+        {
+            // 1. Fetch the products filtered by CreatedBy
+            var sql = @"
+                SELECT * FROM Products 
+                WHERE CreatedBy = @UserId 
+                ORDER BY DateCreated DESC";
+
+            var products = (await _dbSession.Connection.QueryAsync<Products>(
+                sql,
+                new { UserId = userId },
+                _dbSession.Transaction)).ToList();
+
+            int count = products.Count;
+
+            // 2. Fetch the Categories for these specific products
+            if (products.Any())
+            {
+                var productIds = products.Select(p => p.Id).ToList();
+
+                var sqlCategories = @"
+                SELECT pc.ProductsId, c.Id, c.Name 
+                FROM ProductCategories pc
+                INNER JOIN Category c ON pc.Id = c.Id
+                WHERE pc.ProductsId IN @Ids";
+
+                var details = await _dbSession.Connection.QueryAsync<dynamic>(
+                    sqlCategories,
+                    new { Ids = productIds },
+                    _dbSession.Transaction
+                );
+
+                // 3. Map Categories back to the Product objects
+                foreach (var product in products)
+                {
+                    product.ProductCategories = details
+                        .Where(d => (int)d.ProductsId == product.Id)
+                        .Select(m => new ProductCategories
+                        {
+                            Id = m.Id,
+                            Name = m.Name
+                        }).ToList();
+                }
+            }
+
+            return (products, count);
+        }
+
         public async Task<Products?> GetByIdAsync(int productId)
         {
             var product = await _dbSession.Connection.QueryFirstOrDefaultAsync<Products>(

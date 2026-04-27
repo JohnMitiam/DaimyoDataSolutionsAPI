@@ -26,12 +26,13 @@ namespace DaimyoDataSolutions.Application.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<IServiceResult> CreateAsync(CreateAffiliateDTO affiliate)
+        public async Task<IServiceResult> CreateAsync(CreateAffiliateDTO affiliate, string userId)
         {
             try
             {
                 var record = _mapper.Map<Affiliate>(affiliate);
                 //record.CreatedBy = affiliateId;
+                record.CreatedBy = userId;
                 record.DateCreated = DateTime.UtcNow;
 
                 var validationResult = _validator.IsValid(record);
@@ -57,7 +58,7 @@ namespace DaimyoDataSolutions.Application.Services
             }
         }
 
-        public async Task<IServiceResult> DeleteAsync(int id)
+        public async Task<IServiceResult> DeleteAsync(int id, string userId)
         {
             try
             {
@@ -128,7 +129,7 @@ namespace DaimyoDataSolutions.Application.Services
             }
         }
 
-        public async Task<IServiceResult> UpdateAsync(int affiliateId, UpdateAffiliateDTO affiliate)
+        public async Task<IServiceResult> UpdateAsync(int affiliateId, UpdateAffiliateDTO affiliate, string userId)
         {
             try
             {
@@ -137,6 +138,7 @@ namespace DaimyoDataSolutions.Application.Services
                     return FailedResult(ServiceConstants.RecordNotFound);
 
                 _mapper.Map(affiliate, record);
+                record.UpdatedBy = userId;
                 record.DateUpdated = DateTime.UtcNow;
 
                 var validationResult = _validator.IsValid(record);
