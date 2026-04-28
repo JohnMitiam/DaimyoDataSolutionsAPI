@@ -26,12 +26,13 @@ namespace DaimyoDataSolutions.Application.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<IServiceResult> CreateAsync(CreateCategoryDTO Category)
+        public async Task<IServiceResult> CreateAsync(CreateCategoryDTO Category, string userId)
         {
             try
             {
                 var record = _mapper.Map<Category>(Category);
                 //record.CreatedBy = affiliateId;
+                record.CreatedBy = userId;
                 record.DateCreated = DateTime.UtcNow;
 
                 var validationResult = _validator.IsValid(record);
@@ -57,7 +58,7 @@ namespace DaimyoDataSolutions.Application.Services
             }
         }
 
-        public async Task<IServiceResult> DeleteAsync(int CategoryId)
+        public async Task<IServiceResult> DeleteAsync(int CategoryId, string userId)
         {
             try
             {
@@ -134,7 +135,7 @@ namespace DaimyoDataSolutions.Application.Services
             }
         }
 
-        public async Task<IServiceResult> UpdateAsync(int CategoryId, UpdateCategoryDTO Categories)
+        public async Task<IServiceResult> UpdateAsync(int CategoryId, UpdateCategoryDTO Categories, string userId)
         {
             try
             {
@@ -144,6 +145,7 @@ namespace DaimyoDataSolutions.Application.Services
 
                 _mapper.Map(Categories, record);
                 record.DateUpdated = DateTime.UtcNow;
+                record.UpdatedBy = userId;
 
                 var validationResult = _validator.IsValid(record);
                 if (!validationResult.isSuccess)

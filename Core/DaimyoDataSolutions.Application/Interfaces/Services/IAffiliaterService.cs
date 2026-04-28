@@ -8,8 +8,8 @@ namespace DaimyoDataSolutions.Application.Interfaces.Services
     {
         Task<IServiceResult> GetAsync(AffiliateResourceParameters resourceParameters);
         Task<IServiceResult> GetByIdAsync(int affiliateId);
-        Task<IServiceResult> CreateAsync(CreateAffiliateDTO affiliate);
-        Task<IServiceResult> UpdateAsync(int affiliateId, UpdateAffiliateDTO affiliate);
-        Task<IServiceResult> DeleteAsync(int affiliateId);
+        Task<IServiceResult> CreateAsync(CreateAffiliateDTO affiliate, string userId);
+        Task<IServiceResult> UpdateAsync(int affiliateId, UpdateAffiliateDTO affiliate, string userId);
+        Task<IServiceResult> DeleteAsync(int affiliateId, string userId);
     }
 }
