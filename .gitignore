@@ -10,8 +10,6 @@
 *.userosscache
 *.sln.docstates
 
-firebase-config.json
-
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
@@ -122,6 +120,8 @@ ipch/
 
 # Visual Studio Trace Files
 *.e2e
+
+.env
 
 # TFS 2012 Local Workspace
 $tf/

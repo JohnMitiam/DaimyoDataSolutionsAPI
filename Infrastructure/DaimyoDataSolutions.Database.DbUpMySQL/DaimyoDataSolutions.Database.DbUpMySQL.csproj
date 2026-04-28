@@ -17,6 +17,7 @@
   <ItemGroup>
     <PackageReference Include="dbup-core" Version="6.1.1" />
     <PackageReference Include="dbup-mysql" Version="6.1.0" />
+    <PackageReference Include="DotNetEnv" Version="3.2.0" />
   </ItemGroup>
 
   <ItemGroup>

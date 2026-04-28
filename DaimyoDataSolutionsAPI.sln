@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.4.11612.150 stable
+VisualStudioVersion = 18.4.11612.150
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{99A2415F-146A-429C-983E-B1C6B88F4F05}"
 EndProject
@@ -18,6 +18,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DaimyoDataSolutions.Infrastructure", "Infrastructure\DaimyoDataSolutions.Infrastructure\DaimyoDataSolutions.Infrastructure.csproj", "{3326E40A-7A19-D633-5B56-504FDB9E0BF9}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DaimyoDataSolutions.API", "Presentation\DaimyoDataSolutions.API\DaimyoDataSolutions.API.csproj", "{F39E91F0-9983-57FC-81E1-5D6CF17D086B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{587C2A34-826C-433C-A748-2E141BBFDC98}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
