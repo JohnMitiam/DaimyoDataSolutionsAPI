@@ -1,7 +1,7 @@
 CREATE TABLE `Products` (
   `Id` int NOT NULL AUTO_INCREMENT,
   `Name` varchar(100) NOT NULL,
-  `Description` varchar(150) DEFAULT NULL,
+  `Description` longtext DEFAULT NULL,
   `Price` decimal(20,0) DEFAULT NULL,
   `IsActive` tinyint(1) DEFAULT '1',
   `CreatedBy` varchar(50) NULL,
