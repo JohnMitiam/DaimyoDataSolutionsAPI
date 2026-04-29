@@ -1,7 +1,7 @@
 using DaimyoDataSolutions.API.Authentication;
 using DaimyoDataSolutions.Application;
 using DaimyoDataSolutions.Infrastructure;
-using DotNetEnv;
+//using DotNetEnv;
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication;
@@ -11,21 +11,24 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-Env.Load();
+//Env.Load();
 
 // initialize Firebase
 var firebaseConfigPath = Path.Combine(AppContext.BaseDirectory, "firebase-config.json");
 
 string jsonTemplate = File.ReadAllText(firebaseConfigPath);
 
-string privateKey = Environment.GetEnvironmentVariable("FIREBASE_PRIVATE_KEY")?
+string GetSecret(string key) =>
+    Environment.GetEnvironmentVariable(key) ?? builder.Configuration[key];
+
+string privateKey = GetSecret("FIREBASE_PRIVATE_KEY")?
     .Replace("\\n", "\n");
 
 string completedJson = jsonTemplate
-    .Replace("{PRIVATE_KEY_ID}", Environment.GetEnvironmentVariable("FIREBASE_PRIVATE_KEY_ID"))
+    .Replace("{PRIVATE_KEY_ID}", GetSecret("FIREBASE_PRIVATE_KEY_ID"))
     .Replace("{PRIVATE_KEY}", privateKey)
-    .Replace("{CLIENT_EMAIL}", Environment.GetEnvironmentVariable("FIREBASE_CLIENT_EMAIL"))
-    .Replace("{CLIENT_ID}", Environment.GetEnvironmentVariable("FIREBASE_CLIENT_ID"));
+    .Replace("{CLIENT_EMAIL}", GetSecret("FIREBASE_CLIENT_EMAIL"))
+    .Replace("{CLIENT_ID}", GetSecret("FIREBASE_CLIENT_ID"));
 
 FirebaseApp.Create(new AppOptions()
 {

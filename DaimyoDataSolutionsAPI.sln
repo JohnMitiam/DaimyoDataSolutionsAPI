@@ -19,8 +19,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DaimyoDataSolutions.Infrast
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DaimyoDataSolutions.API", "Presentation\DaimyoDataSolutions.API\DaimyoDataSolutions.API.csproj", "{F39E91F0-9983-57FC-81E1-5D6CF17D086B}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{587C2A34-826C-433C-A748-2E141BBFDC98}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
