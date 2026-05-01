@@ -68,18 +68,13 @@ namespace DaimyoDataSolutions.Application.Services
                     return FailedResult(ServiceConstants.RecordNotFound);
                 }
 
-                //var validationResult = await _validator.IsValidForDeleteAsync(record);
-                //if (!validationResult.isSuccess)
-                //{
-                //    return FailedResult(validationResult.errorMessages);
-                //}
+                record.IsDeleted = true;
+                record.UpdatedBy = userId;
+                record.DateUpdated = DateTime.UtcNow;
 
                 _unitOfWork.CreateTransaction();
 
-                await _unitOfWork.Categories.DeleteAsync(record.Id);
-
                 _unitOfWork.Commit();
-
                 return SuccessResult();
             }
             catch (Exception ex)

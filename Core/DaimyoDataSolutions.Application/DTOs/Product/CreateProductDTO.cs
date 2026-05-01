@@ -1,7 +1,9 @@
-﻿namespace DaimyoDataSolutions.Application.DTOs.Product
+﻿using DaimyoDataSolutions.Application.DTOs.ProductCategories;
+
+namespace DaimyoDataSolutions.Application.DTOs.Product
 {
     public class CreateProductDTO : BaseProductDTO
     {
-        public List<int> ProductCategoryIds { get; set; } = new();
+        public List<CreateProductCategoriesDTO> Categories { get; set; }
     }
 }

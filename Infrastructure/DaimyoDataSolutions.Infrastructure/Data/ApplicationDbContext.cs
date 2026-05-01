@@ -2,7 +2,6 @@
 using DaimyoDataSolutions.Domain.Entities.Base;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System.Security.Claims;
 
 namespace DaimyoDataSolutions.Infrastructure.Data
@@ -23,6 +22,7 @@ namespace DaimyoDataSolutions.Infrastructure.Data
         // DbSetes
         public DbSet<Affiliate> Affiliate { get; set; }
         public DbSet<Products> Product { get; set; }
+        public DbSet<ProductCategories> ProductCategories { get; set; }
         public DbSet<Category> Category { get; set; }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -63,6 +63,27 @@ namespace DaimyoDataSolutions.Infrastructure.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<Products>(entity =>
+            {
+                entity.ToTable("Product");
+                entity.HasIndex(a => a.Name).IsUnique();
+                entity.HasQueryFilter(e => !e.IsDeleted);
+            });
+
+            modelBuilder.Entity<ProductCategories>(entity =>
+            {
+                entity.ToTable("ProductCategories");
+                entity.HasKey(pc => new { pc.ProductId, pc.Id });
+                entity.HasOne(pc => pc.Product)
+                      .WithMany(p => p.ProductCategories)
+                      .HasForeignKey(pc => pc.ProductId);
+
+                entity.HasOne(pc => pc.Categories)
+                      .WithMany()
+                      .HasForeignKey(pc => pc.Id);
+                entity.HasQueryFilter(e => !e.IsDeleted);
+            });
+
             modelBuilder.Entity<Category>(entity =>
             {
                 entity.ToTable("Category");
@@ -74,12 +95,6 @@ namespace DaimyoDataSolutions.Infrastructure.Data
             modelBuilder.Entity<Affiliate>(entity =>
             {
                 entity.ToTable("Affiliate");
-                entity.HasIndex(a => a.Name).IsUnique();
-                entity.HasQueryFilter(e => !e.IsDeleted);
-            });
-
-            modelBuilder.Entity<Products>(entity => {
-                entity.ToTable("Products");
                 entity.HasIndex(a => a.Name).IsUnique();
                 entity.HasQueryFilter(e => !e.IsDeleted);
             });

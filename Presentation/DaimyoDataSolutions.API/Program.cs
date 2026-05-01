@@ -135,8 +135,8 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
 
-app.UseAuthentication();  // First: Identify user
-app.UseAuthorization();   // Then: Check permissions
+app.UseAuthentication();
+app.UseAuthorization();
 
 
 app.MapControllers();

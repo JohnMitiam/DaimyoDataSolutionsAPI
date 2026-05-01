@@ -78,13 +78,13 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
             return result;
         }
 
-        public async Task<bool> DeleteAsync(int affiliateId)
+        public async Task<bool> DeleteAsync(Affiliate affiliate)
         {
             var query = $@"sp_DeleteAffiliate";
 
             var queryParams = new
             {
-                AffiliateID = affiliateId
+                AffiliateID = affiliate.Id
             };
 
             await _dbSession.Connection.ExecuteAsync(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure);

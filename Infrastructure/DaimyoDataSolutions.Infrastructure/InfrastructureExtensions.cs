@@ -20,9 +20,9 @@ namespace DaimyoDataSolutions.Infrastructure
 
             services.AddScoped<DatabaseSession>();
 
-            // Stored Procedure Repositories
             services.AddTransient<IAffiliateRepository, AffiliateRepository>();
             services.AddTransient<IProductRepository, ProductRepository>();
+            services.AddTransient<IProductCategoriesRepository, ProductCategoriesRepository>();
             services.AddTransient<ICategoryRepository, CategoryRepository>();
 
             services.AddScoped<IUnitOfWork, UnitOfWork>();

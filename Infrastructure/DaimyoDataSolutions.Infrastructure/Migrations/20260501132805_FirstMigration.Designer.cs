@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DaimyoDataSolutions.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260413023924_FirstMigration")]
+    [Migration("20260501132805_FirstMigration")]
     partial class FirstMigration
     {
         /// <inheritdoc />
@@ -117,24 +117,36 @@ namespace DaimyoDataSolutions.Infrastructure.Migrations
 
             modelBuilder.Entity("DaimyoDataSolutions.Domain.Entities.ProductCategories", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<int>("ProductId")
                         .HasColumnType("int");
 
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
 
-                    b.Property<string>("Name")
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<int?>("ProductsId")
-                        .HasColumnType("int");
+                    b.Property<DateTime?>("DateCreated")
+                        .HasColumnType("datetime(6)");
 
-                    b.HasKey("Id");
+                    b.Property<DateTime?>("DateUpdated")
+                        .HasColumnType("datetime(6)");
 
-                    b.HasIndex("ProductsId");
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
 
-                    b.ToTable("ProductCategories");
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("longtext");
+
+                    b.HasKey("ProductId", "Id");
+
+                    b.HasIndex("Id");
+
+                    b.ToTable("ProductCategories", (string)null);
                 });
 
             modelBuilder.Entity("DaimyoDataSolutions.Domain.Entities.Products", b =>
@@ -184,14 +196,26 @@ namespace DaimyoDataSolutions.Infrastructure.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Products", (string)null);
+                    b.ToTable("Product", (string)null);
                 });
 
             modelBuilder.Entity("DaimyoDataSolutions.Domain.Entities.ProductCategories", b =>
                 {
-                    b.HasOne("DaimyoDataSolutions.Domain.Entities.Products", null)
+                    b.HasOne("DaimyoDataSolutions.Domain.Entities.Category", "Categories")
+                        .WithMany()
+                        .HasForeignKey("Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DaimyoDataSolutions.Domain.Entities.Products", "Product")
                         .WithMany("ProductCategories")
-                        .HasForeignKey("ProductsId");
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Categories");
+
+                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("DaimyoDataSolutions.Domain.Entities.Products", b =>
