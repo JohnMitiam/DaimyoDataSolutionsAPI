@@ -22,14 +22,14 @@ namespace DaimyoDataSolutions.Application.Mappings
             CreateMap<Products, ViewProductDTO>();
 
             CreateMap<ProductCategories, ViewProductCategoriesDTO>()
-                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Categories != null ? src.Categories.Name : null))
-                .ForMember(dest => dest.CategoriesId, opt => opt.MapFrom(src => src.CategoryId));
+                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category.Name))
+                .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.CategoryId));
             CreateMap<CreateProductCategoriesDTO, ProductCategories>()
                 .ForMember(dest => dest.Product, opt => opt.Ignore())
-                .ForMember(dest => dest.Categories, opt => opt.Ignore());
+                .ForMember(dest => dest.Category, opt => opt.Ignore());
             CreateMap<UpdateProductCategoriesDTO, ProductCategories>()
                 .ForMember(dest => dest.Product, opt => opt.Ignore())
-                .ForMember(dest => dest.Categories, opt => opt.Ignore());
+                .ForMember(dest => dest.Category, opt => opt.Ignore());
 
             CreateMap<Category, CreateCategoryDTO>().ReverseMap();
             CreateMap<Category, UpdateCategoryDTO>().ReverseMap();

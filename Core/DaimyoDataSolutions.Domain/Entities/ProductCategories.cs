@@ -12,6 +12,7 @@ namespace DaimyoDataSolutions.Domain.Entities
         public int ProductId { get; set; }
         public Products Product { get; set; } = null;
         public int CategoryId { get; set; }
-        public Category Categories { get; set; } = null;
+        public Category Category { get; set; } = null;
+        public string CategoryName { get; set; }
     }
 }

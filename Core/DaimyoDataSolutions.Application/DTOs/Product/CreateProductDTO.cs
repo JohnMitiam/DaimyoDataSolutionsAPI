@@ -4,6 +4,6 @@ namespace DaimyoDataSolutions.Application.DTOs.Product
 {
     public class CreateProductDTO : BaseProductDTO
     {
-        public List<CreateProductCategoriesDTO> Categories { get; set; }
+        public List<CreateProductCategoriesDTO>? Categories { get; set; }
     }
 }

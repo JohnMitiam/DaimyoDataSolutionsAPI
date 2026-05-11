@@ -2,6 +2,6 @@
 {
     public class BaseProductCategoriesDTO
     {
-        public int CategoriesId { get; set; }
+        public int CategoryId { get; set; }
     }
 }

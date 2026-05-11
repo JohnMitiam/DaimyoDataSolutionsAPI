@@ -63,41 +63,29 @@ namespace DaimyoDataSolutions.Infrastructure.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<Products>(entity =>
-            {
-                entity.ToTable("Product");
-                entity.HasIndex(a => a.Name).IsUnique();
-                entity.HasQueryFilter(e => !e.IsDeleted);
-            });
+            modelBuilder.Entity<Products>()
+                .ToTable("Products", (string)null)
+                .HasMany(p => p.ProductCategories)
+                .WithOne(p => p.Product)
+                .HasForeignKey(pi => pi.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<ProductCategories>(entity =>
-            {
-                entity.ToTable("ProductCategories");
-                entity.HasKey(pc => new { pc.ProductId, pc.Id });
-                entity.HasOne(pc => pc.Product)
-                      .WithMany(p => p.ProductCategories)
-                      .HasForeignKey(pc => pc.ProductId);
+            modelBuilder.Entity<Category>()
+                .HasMany(s => s.ProductCategories)
+                .WithOne(ps => ps.Category)
+                .HasForeignKey(pc => pc.CategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-                entity.HasOne(pc => pc.Categories)
-                      .WithMany()
-                      .HasForeignKey(pc => pc.Id);
-                entity.HasQueryFilter(e => !e.IsDeleted);
-            });
+            modelBuilder.Entity<Affiliate>()
+                .HasIndex(aff => aff.Name)
+                .IsUnique();
 
-            modelBuilder.Entity<Category>(entity =>
-            {
-                entity.ToTable("Category");
-                entity.HasIndex(a => a.Name).IsUnique();
-                entity.Property(e => e.Icon).HasColumnType("MEDIUMTEXT");
-                entity.HasQueryFilter(e => !e.IsDeleted);
-            });
+            modelBuilder.Entity<Category>()
+                .HasIndex(c => c.Name);
 
-            modelBuilder.Entity<Affiliate>(entity =>
-            {
-                entity.ToTable("Affiliate");
-                entity.HasIndex(a => a.Name).IsUnique();
-                entity.HasQueryFilter(e => !e.IsDeleted);
-            });
+            modelBuilder.Entity<Products>().HasQueryFilter(p => !p.IsDeleted);
+            modelBuilder.Entity<Category>().HasQueryFilter(p => !p.IsDeleted);
+            modelBuilder.Entity<Affiliate>().HasQueryFilter(p => !p.IsDeleted);
         }
     }
 }

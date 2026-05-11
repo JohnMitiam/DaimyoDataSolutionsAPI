@@ -1,124 +1,161 @@
 ﻿using DaimyoDataSolutions.Application.Interfaces.Data;
 using DaimyoDataSolutions.Application.ResourceParameters;
 using DaimyoDataSolutions.Domain.Entities;
+using Dapper;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
 {
     public class ProductCategoriesRepository : IProductCategoriesRepository
     {
-        private readonly ApplicationDbContext _dbContext;
+        private readonly DatabaseSession _dbSession;
 
-        public ProductCategoriesRepository(ApplicationDbContext dbContext)
+        public ProductCategoriesRepository(DatabaseSession dbSession)
         {
-            _dbContext = dbContext;
+            _dbSession = dbSession;
         }
 
-        public async Task<ProductCategories> CreateAsync(ProductCategories entity)
+        public async Task<ProductCategories> CreateAsync(ProductCategories productCategories)
         {
-            await _dbContext.ProductCategories.AddAsync(entity);
-            return entity;
+            var query = @"sp_CreateProductCategories";
+
+            var queryparams = new
+            {
+                ProductId = productCategories.ProductId,
+                CategoryId = productCategories.CategoryId,
+                CreatedBy = productCategories.CreatedBy,
+                DateCreated = productCategories.DateCreated,
+                IsDeleted = productCategories.IsDeleted
+            };
+
+            productCategories.Id = await _dbSession.Connection.ExecuteScalarAsync<int>
+                (
+                query, queryparams, _dbSession.Transaction,
+                commandType: CommandType.StoredProcedure
+                );
+
+            return productCategories;
         }
 
-        public async Task<bool> UpdateAsync(ProductCategories entity)
+        public async Task<bool> UpdateAsync(ProductCategories productCategories)
         {
-            var existing = await _dbContext.ProductCategories
-                .FirstOrDefaultAsync(pc => pc.Id == entity.Id && !pc.IsDeleted);
+            var query = @"sp_UpdateProductCategories";
 
-            if (existing == null) return false;
+            var queryParams = new
+            {
+                ID = productCategories.Id,
+                ProductId = productCategories.ProductId,
+                CategoryId = productCategories.CategoryId,
+                UpdatedBy = productCategories.UpdatedBy,
+                DateUpdated = productCategories.DateUpdated
+            };
 
-            _dbContext.Entry(existing).CurrentValues.SetValues(entity);
+            await _dbSession.Connection
+                .ExecuteAsync(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure)
+                .ConfigureAwait(false);
 
             return true;
         }
 
-        public async Task<bool> DeleteAsync(ProductCategories entity)
+        public async Task<bool> DeleteAsync(ProductCategories productCategories)
         {
-            var existing = await _dbContext.ProductCategories
-                .FirstOrDefaultAsync(pc => pc.Id == entity.Id && !pc.IsDeleted);
+            var query = $@"sp_DeleteProductCategories";
 
-            if (existing == null) return false;
+            var queryParams = new
+            {
+                ProductCategoryID = productCategories.Id
+            };
 
-            existing.IsDeleted = entity.IsDeleted;
-            existing.UpdatedBy = entity.UpdatedBy;
-            existing.DateUpdated = entity.DateUpdated;
+            await _dbSession.Connection.ExecuteAsync(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure);
 
             return true;
         }
 
-        public async Task<ProductCategories?> GetByIdAsync(int id)
+        public async Task<ProductCategories?> GetByIdAsync(int productCategoriesId)
         {
-            return await _dbContext.ProductCategories
-                .AsNoTracking()
-                .Include(pc => pc.Product)
-                .Include(pc => pc.Categories)
-                .FirstOrDefaultAsync(pc => pc.Id == id);
+            var query = $@"sp_GetProductCategoriesById";
+
+            var queryParams = new
+            {
+                ID = productCategoriesId
+            };
+
+            var result = await _dbSession.Connection
+                .QueryFirstOrDefaultAsync<ProductCategories>(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure)
+                .ConfigureAwait(false);
+
+            return result;
         }
 
         public async Task<(IEnumerable<ProductCategories> productCategories, int recordCount)> GetAsync(
             ProductCategoriesResourceParameters resourceParameters)
         {
-            var query = _dbContext.ProductCategories
-                .AsNoTracking()
-                .Include(pc => pc.Categories)
-                .Where(ps => !ps.IsDeleted);
+            var queryParamBuilder = new QueryParameters(
+                resourceParameters.Search ?? string.Empty,
+                resourceParameters.SearchFields ?? new List<string>(),
+                resourceParameters.Page,
+                resourceParameters.PageSize
+            );
 
-            if (resourceParameters.ProductId.HasValue)
-            {
-                query = query.Where(pc => pc.ProductId == resourceParameters.ProductId.Value);
-            }
+            var baseDataQuery = @"SELECT * FROM ProductCategories WHERE IsDeleted = 0 ";
+            var baseCountQuery = @"SELECT COUNT(*) FROM ProductCategories WHERE IsDeleted = 0 ";
 
-            if (resourceParameters.CategoryId.HasValue)
-            {
-                query = query.Where(pc => pc.CategoryId == resourceParameters.CategoryId.Value);
-            }
+            var searchSQL = queryParamBuilder.GetSearchSQLQuery();
+            var filterSQL = queryParamBuilder.GetFilterSQLQuery();
+            var paginationSQL = queryParamBuilder.GetPaginationSQLQuery();
 
-            var recordCount = await query.CountAsync();
+            var finalDataQuery = baseDataQuery + searchSQL + filterSQL + paginationSQL;
+            var finalCountQuery = baseCountQuery + searchSQL + filterSQL;
 
-            if (!string.IsNullOrWhiteSpace(resourceParameters.OrderBy))
-            {
-                query = resourceParameters.OrderBy.ToLower() switch
-                {
-                    "id" => query.OrderBy(ps => ps.Id),
-                    "id_desc" => query.OrderByDescending(ps => ps.Id),
-                    "productid" => query.OrderBy(ps => ps.ProductId),
-                    "productid_desc" => query.OrderByDescending(ps => ps.ProductId),
-                    "categoryid" => query.OrderBy(ps => ps.CategoryId),
-                    "categoryid_desc" => query.OrderByDescending(ps => ps.CategoryId),
-                    "datecreated" => query.OrderBy(ps => ps.DateCreated),
-                    "datecreated_desc" => query.OrderByDescending(ps => ps.DateCreated),
-                    _ => query.OrderByDescending(ps => ps.Id)
-                };
-            }
-            else
-            {
-                query = query.OrderByDescending(ps => ps.Id);
-            }
+            var result = await _dbSession.Connection.QueryAsync<ProductCategories>(finalDataQuery, queryParamBuilder.Parameters);
+            var totalCount = await _dbSession.Connection.ExecuteScalarAsync<int>(finalCountQuery, queryParamBuilder.Parameters);
 
-            // Pagination
-            var propertySpecs = await query
-                .Skip((resourceParameters.Page - 1) * resourceParameters.PageSize)
-                .Take(resourceParameters.PageSize)
-                .ToListAsync();
-
-            return (propertySpecs, recordCount);
+            return (result, totalCount);
         }
 
         public async Task<bool> ExistsAsync(int productId, int categoryId)
         {
-            return await _dbContext.ProductCategories
-                .AnyAsync(pc => pc.ProductId == productId
-                             && pc.CategoryId == categoryId
-                             && !pc.IsDeleted);
+            var query = @"SELECT COUNT(1) FROM ProductCategories
+                            WHERE ProductId = @ProductId
+                            AND CategoryId = @CategoryId
+                            AND IsDeleted = 0";
+
+            var queryParams = new
+            {
+                ProductId = productId,
+                CategoryId = categoryId
+            };
+
+            var count = await _dbSession.Connection.ExecuteScalarAsync<int>
+                (
+                    query, queryParams, _dbSession.Transaction
+                );
+
+            return count > 0;
         }
 
         public async Task<bool> ExistsAsyncExcludingId(int productId, int categoryId, int excludeId)
         {
-            return await _dbContext.ProductCategories
-                .AnyAsync(ps => ps.ProductId == productId
-                             && ps.CategoryId == categoryId
-                             && ps.Id != excludeId
-                             && !ps.IsDeleted);
+            var query = @"SELECT COUNT(1) FROM ProductCategories
+                            WHERE ProductId = @ProductId
+                            AND CategoryId = @CategoryId
+                            AND Id != @Excluded
+                            AND IsDeleted = 0";
+
+            var queryParams = new
+            {
+                ProductId = productId,
+                CategoryId = categoryId,
+                ExcludeId = excludeId
+            };
+
+            var count = await _dbSession.Connection.ExecuteScalarAsync<int>
+                (
+                    query, queryParams, _dbSession.Transaction
+                );
+
+            return count > 0;
         }
     }
 }

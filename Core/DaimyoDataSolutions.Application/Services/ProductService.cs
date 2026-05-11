@@ -7,15 +7,14 @@ using DaimyoDataSolutions.Application.ResourceParameters;
 using DaimyoDataSolutions.Application.ResultModels;
 using DaimyoDataSolutions.Application.Services.Base;
 using DaimyoDataSolutions.Domain.Entities;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace DaimyoDataSolutions.Application.Services
 {
     public class ProductService : BaseService, IProductService
     {
-        private readonly IProductValidator _validator;
-        private readonly IProductCategoriesValidator _categoriesValildator;
+        private readonly IProductValidator _productValidator;
+        private readonly IProductCategoriesValidator _categoryValidator;
         private readonly ILogger<ProductService> _logger;
         private readonly IMapper _mapper;
         private readonly IUnitOfWork _unitOfWork;
@@ -24,127 +23,258 @@ namespace DaimyoDataSolutions.Application.Services
             IUnitOfWork unitOfWork,
             IMapper mapper,
             ILogger<ProductService> logger,
-            IProductValidator validator,
-            IProductCategoriesValidator categoriesValidator)
+            IProductValidator productValidator,
+            IProductCategoriesValidator categoryValidator)
         {
-            _validator = validator;
-            _categoriesValildator = categoriesValidator;
+            _productValidator = productValidator;
+            _categoryValidator = categoryValidator;
             _logger = logger;
             _mapper = mapper;
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<IServiceResult> CreateAsync(CreateProductDTO product, string userId)
+        public async Task<IServiceResult> CreateAsync(CreateProductDTO productDto, string userId)
         {
-            var record = _mapper.Map<Products>(product);
-            record.CreatedBy = userId;
-            record.DateCreated = DateTime.UtcNow;
+            var productEntity = _mapper.Map<Products>(productDto);
+            productEntity.CreatedBy = userId;
+            productEntity.DateCreated = DateTime.UtcNow;
 
-            var val = _validator.IsValid(record);
-            if (!val.isSuccess) return FailedResult(val.errorMessages);
+            // 1. Validate Product
+            var validation = _productValidator.IsValid(productEntity);
+            if (!validation.isSuccess) return FailedResult(validation.errorMessages);
 
             _unitOfWork.CreateTransaction();
-
             try
             {
-                // 1. Create the Product
-                var createdProduct = await _unitOfWork.Products.CreateAsync(record);
+                // 2. Create Product first to get the ID
+                var createdProduct = await _unitOfWork.Products.CreateAsync(productEntity);
+                await _unitOfWork.SaveChangesAsync();
 
-                // 2. Handle Categories
-                if (product.Categories != null && product.Categories.Any())
+                // 3. Handle Categories
+                if (productDto.Categories != null && productDto.Categories.Any())
                 {
-                    foreach (var catDto in product.Categories)
+                    foreach (var catDto in productDto.Categories)
                     {
-                        var categoryEntity = _mapper.Map<ProductCategories>(catDto);
-                        categoryEntity.ProductId = createdProduct.Id; // Ensure FK is set
-                        categoryEntity.CreatedBy = userId;
-                        categoryEntity.DateCreated = DateTime.UtcNow;
+                        var productCategory = new ProductCategories
+                        {
+                            ProductId = createdProduct.Id, // Use the new ID
+                            CategoryId = catDto.CategoryId,
+                            CreatedBy = userId,
+                            DateCreated = DateTime.UtcNow
+                        };
 
-                        var catVal = _categoriesValildator.IsValid(categoryEntity);
-                        if (!catVal.isSuccess) throw new Exception("Category validation failed");
-
-                        await _unitOfWork.ProductCategories.CreateAsync(categoryEntity);
+                        await _unitOfWork.ProductCategories.CreateAsync(productCategory);
                     }
+                    await _unitOfWork.SaveChangesAsync();
                 }
 
-                await _unitOfWork.SaveChangesAsync();
                 _unitOfWork.Commit();
 
-                return SuccessResult(_mapper.Map<ViewProductDTO>(record));
+                var result = await _unitOfWork.Products.GetByIdAsync(createdProduct.Id);
+                return SuccessResult(_mapper.Map<ViewProductDTO>(result));
             }
             catch (Exception ex)
             {
                 _unitOfWork.Rollback();
-                _logger.LogError(ex.Message);
-                return FailedResult(ServiceConstants.RequestProcessingError);
+                _logger.LogError(ex, "Error creating product with categories");
+                return FailedResult($"Error: {ex.Message}");
             }
         }
 
-        public async Task<IServiceResult> UpdateAsync(int productId, UpdateProductDTO products, string userId)
+        //public async Task<IServiceResult> CreateAsync(CreateProductDTO productDto, string userId)
+        //{
+        //    var productEntity = _mapper.Map<Products>(productDto);
+        //    productEntity.CreatedBy = userId;
+        //    productEntity.DateCreated = DateTime.UtcNow;
+
+        //    var validation = _productValidator.IsValid(productEntity);
+        //    if (!validation.isSuccess)
+        //    {
+        //        return FailedResult(validation.errorMessages);
+        //    }
+
+        //    if (productDto.Categories != null && productDto.Categories.Any())
+        //    {
+        //        foreach (var categoryDto in productDto.Categories)
+        //        {
+        //            var category = _mapper.Map<ProductCategories>(categoryDto);
+        //            category.CreatedBy = userId;
+        //            category.DateCreated = DateTime.UtcNow;
+
+        //            var categoryValidation = _categoryValidator.IsValid(category);
+        //            if (!categoryValidation.isSuccess)
+        //            {
+        //                return FailedResult(categoryValidation.errorMessages);
+        //            }
+
+        //            category.Product = productEntity;
+
+        //            await _unitOfWork.ProductCategories.CreateAsync(category);
+        //        }
+        //    }
+
+        //    _unitOfWork.CreateTransaction();
+
+        //    try
+        //    {
+        //        var createdProperty = await _unitOfWork.Products.CreateAsync(productEntity);
+        //        await _unitOfWork.SaveChangesAsync();
+
+        //        _unitOfWork.Commit();
+
+        //        var result = await _unitOfWork.Products.GetByIdAsync(createdProperty.Id);
+        //        if (result == null)
+        //        {
+        //            return FailedResult("Failed to retrieve created product");
+        //        }
+
+        //        var viewDto = _mapper.Map<ViewProductDTO>(result);
+
+        //        return SuccessResult(viewDto);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _unitOfWork.Rollback();
+        //        _logger.LogError(ex, "Error creating product");
+        //        return FailedResult($"An error occured while creating product: {ex.Message}");
+        //    }
+        //}
+
+        public async Task<IServiceResult> UpdateAsync(int productId, UpdateProductDTO productDto, string userId)
         {
             try
             {
-                // 1. Fetch current record
+                // 1. Fetch the existing product record
                 var record = await _unitOfWork.Products.GetByIdAsync(productId);
-                if (record == null) return FailedResult(ServiceConstants.RecordNotFound);
+                if (record == null) return FailedResult("Product not found.");
 
-                // 2. Map basic properties (Name, Price, etc.) from DTO to Entity
-                _mapper.Map(products, record);
+                // 2. Map DTO changes to the entity
+                _mapper.Map(productDto, record);
                 record.UpdatedBy = userId;
                 record.DateUpdated = DateTime.UtcNow;
+
+                // 3. Validate the Product Entity
+                var productValidation = _productValidator.IsValid(record);
+                if (!productValidation.isSuccess)
+                {
+                    return FailedResult(productValidation.errorMessages);
+                }
 
                 _unitOfWork.CreateTransaction();
 
                 try
                 {
+                    // 4. Update Product Basic Info
                     await _unitOfWork.Products.UpdateAsync(record);
-                    await _unitOfWork.SaveChangesAsync();
 
-                    if (products.ProductCategories != null)
+                    // 5. Sync Categories (Delete missing, Add new, Update existing)
+                    if (productDto.ProductCategories != null)
                     {
-                        await UpdateProductCategoriesAsync(productId, products.ProductCategories, userId);
+                        await UpdateProductCategoriesAsync(productId, productDto.ProductCategories, userId);
                     }
 
                     await _unitOfWork.SaveChangesAsync();
                     _unitOfWork.Commit();
 
-                    var viewProductsDto = _mapper.Map<ViewProductDTO>(products);
-
-                    return SuccessResult(viewProductsDto);
+                    // 6. Return the refreshed data
+                    var result = await _unitOfWork.Products.GetByIdAsync(productId);
+                    return SuccessResult(_mapper.Map<ViewProductDTO>(result));
                 }
                 catch (Exception ex)
                 {
                     _unitOfWork.Rollback();
-                    _logger.LogError(ex, "Transaction failed while updating the product");
+                    _logger.LogError(ex, "Transaction failed while updating product {ProductId}", productId);
+                    return FailedResult("An error occurred during the update transaction.");
                 }
-
-                // 3. Update main Product table
-                //await _unitOfWork.Products.UpdateAsync(record);
-
-
-                _unitOfWork.Commit();
-                return SuccessResult();
             }
             catch (Exception ex)
             {
-                _unitOfWork.Rollback();
-                _logger.LogError($"Update Failed: {ex.Message}");
+                _logger.LogError(ex, "Update failed for product {ProductId}", productId);
                 return FailedResult(ServiceConstants.RequestProcessingError);
             }
         }
+
+        //public async Task<IServiceResult> UpdateAsync(int productId, UpdateProductDTO products, string userId)
+        //{
+        //    try
+        //    {
+        //        var record = await _unitOfWork.Products.GetByIdAsync(productId);
+        //        if (record == null) return FailedResult("Product not found. ");
+
+        //        _mapper.Map(products, record);
+        //        record.Name = record.Name?.Trim() ?? string.Empty;
+        //        record.Description = record.Description?.Trim();
+        //        record.UpdatedBy = userId;
+        //        record.DateUpdated = DateTime.UtcNow;
+
+        //        var productValidation = _productValidator.IsValid(record);
+        //        if (!productValidation.isSuccess)
+        //        {
+        //            return FailedResult(productValidation.errorMessages);
+        //        }
+
+        //        _unitOfWork.CreateTransaction();
+
+        //        try
+        //        {
+        //            await _unitOfWork.Products.UpdateAsync(record);
+        //            await _unitOfWork.SaveChangesAsync();
+
+        //            if (products.ProductCategories != null)
+        //            {
+        //                await UpdateProductCategoriesAsync(productId, products.ProductCategories, userId);
+        //            }
+
+        //            await _unitOfWork.SaveChangesAsync();
+        //            _unitOfWork.Commit();
+
+        //            var result = await _unitOfWork.Products.GetByIdAsync(productId);
+        //            if (result is null)
+        //            {
+        //                throw new Exception($"Product with Id {productId} not found");
+        //            }
+
+        //            var viewProductsDto = _mapper.Map<ViewProductDTO>(result);
+
+        //            return SuccessResult(viewProductsDto);
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            _unitOfWork.Rollback();
+        //            _logger.LogError(ex, "Transaction failed while updating the product");
+        //        }
+
+        //        _unitOfWork.Commit();
+        //        return SuccessResult();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _unitOfWork.Rollback();
+        //        _logger.LogError($"Update Failed: {ex.Message}");
+        //        return FailedResult(ServiceConstants.RequestProcessingError);
+        //    }
+        //}
 
         public async Task<IServiceResult> GetAsync(ProductResourceParameters resourceParameters)
         {
             try
             {
-                var (products, count) = await _unitOfWork.Products.GetAsync(resourceParameters);
-                var dtos = _mapper.Map<IEnumerable<ViewProductDTO>>(products);
-                return SuccessResult(new PaginatedList<ViewProductDTO>(dtos.ToList(), count, resourceParameters.Page, resourceParameters.PageSize));
+                var result = await _unitOfWork.Products.GetAsync(resourceParameters);
+                var productDtos = _mapper.Map<IEnumerable<ViewProductDTO>>(result.products).ToList();
+
+                var pagedResult = new PaginatedList<ViewProductDTO>(
+                        productDtos,
+                        result.recordCount,
+                        resourceParameters.Page,
+                        resourceParameters.PageSize
+                    );
+
+                return SuccessResult(pagedResult);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
-                return FailedResult(ServiceConstants.RequestProcessingError);
+                _logger.LogError(ex, "Error fetching products");
+                return FailedResult("An error occured while fetching products");
             }
         }
 
@@ -158,10 +288,9 @@ namespace DaimyoDataSolutions.Application.Services
 
                 return SuccessResult(productDtos);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error in GetMyProductsAsync: {ex.Message}");
-                return FailedResult(ServiceConstants.RequestProcessingError);
+            catch (Exception ex) {
+                _logger.LogError(ex, "Error fetching managed products for user {UserId}", userId);
+                return FailedResult("An error occurred while fetching your managed products.");
             }
         }
 
@@ -169,13 +298,19 @@ namespace DaimyoDataSolutions.Application.Services
         {
             try
             {
-                var record = await _unitOfWork.Products.GetByIdAsync(productId);
-                return record == null ? FailedResult(ServiceConstants.RecordNotFound) : SuccessResult(_mapper.Map<ViewProductDTO>(record));
+                var product = await _unitOfWork.Products.GetByIdAsync(productId);
+                if (product == null)
+                {
+                    return FailedResult("Product not found.");
+                }
+
+                var productDto = _mapper.Map<ViewProductDTO>(product);
+
+                return SuccessResult(productDto);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.Message);
-                return FailedResult(ServiceConstants.RequestProcessingError);
+            catch (Exception ex) {
+                _logger.LogError(ex, "Error fetching product");
+                return FailedResult("An error occurred while fetching the product.");
             }
         }
 
@@ -183,28 +318,40 @@ namespace DaimyoDataSolutions.Application.Services
         {
             try
             {
-                var record = await _unitOfWork.Products.GetByIdAsync(productId);
-                if (record == null)
+                var product = await _unitOfWork.Products.GetByIdAsync(productId);
+                if (product == null)
                 {
-                    return FailedResult(ServiceConstants.RecordNotFound);
+                    return FailedResult("Product not found. ");
                 }
 
-                record.IsDeleted = true;
-                record.UpdatedBy = userId;
-                record.DateUpdated = DateTime.UtcNow;
+                product.IsDeleted = true;
+                product.UpdatedBy = userId;
+                product.DateUpdated = DateTime.UtcNow;
 
                 _unitOfWork.CreateTransaction();
 
                 try
                 {
-                    var catsParams = new ProductCategoriesResourceParameters
+                    var categoryParams = new ProductCategoriesResourceParameters
                     {
                         ProductId = productId,
                         Page = 1,
                         PageSize = 1000
                     };
-                    var (cats, _) = await _unitOfWork.ProductCategories.GetAsync(catsParams);
-                    foreach (var cat in cats) ;
+                    var (categories, _) = await _unitOfWork.ProductCategories.GetAsync(categoryParams);
+                    foreach (var category in categories)
+                    {
+                        category.IsDeleted = true;
+                        category.UpdatedBy = userId;
+                        category.DateUpdated = DateTime.UtcNow;
+                        await _unitOfWork.ProductCategories.DeleteAsync(category);
+                    }
+
+                    await _unitOfWork.Products.DeleteAsync(product);
+                    await _unitOfWork.SaveChangesAsync();
+                    _unitOfWork.Commit();
+
+                    return SuccessResult();
                 }
                 catch (Exception ex)
                 {
@@ -212,10 +359,6 @@ namespace DaimyoDataSolutions.Application.Services
                     _logger.LogError(ex, "Transaction failed while deleting the product!");
                     throw;
                 }
-
-                _unitOfWork.Commit();
-
-                return SuccessResult();
             }
             catch (Exception ex)
             {
@@ -226,119 +369,56 @@ namespace DaimyoDataSolutions.Application.Services
             }
         }
 
-        private async Task UpdateProductCategoriesAsync(int productId, List<UpdateProductCategoriesDTO> catsDto, string userId)
+        private async Task UpdateProductCategoriesAsync(int productId, List<UpdateProductCategoriesDTO> dtoCats, string userId)
         {
-            _logger.LogInformation($"Updating specs for product {productId}");
-
-            var existingSpecs = await _unitOfWork.ProductCategories.GetAsync(
+            // 1. Get current categories from DB for this product
+            var existingData = await _unitOfWork.ProductCategories.GetAsync(
                 new ProductCategoriesResourceParameters { ProductId = productId, PageSize = 1000 });
-            var existingSpecsList = existingSpecs.productCategories.ToList();
 
-            foreach (var catsDtos in catsDto)
+            var dbCategories = existingData.productCategories.ToList();
+
+            // 2. Identify what to REMOVE (In DB but not in the new DTO list)
+            var incomingCategoryIds = dtoCats.Where(d => !d.IsDeleted).Select(d => d.CategoryId).ToList();
+            var toDelete = dbCategories.Where(db => !incomingCategoryIds.Contains(db.CategoryId)).ToList();
+
+            foreach (var cat in toDelete)
             {
-                if (catsDtos.Id > 0)
-                {
-                    var existingSpec = existingSpecsList.FirstOrDefault(cats => cats.Id == catsDtos.CategoriesId);
-
-                    if (existingSpec != null && existingSpec.ProductId == productId)
-                    {
-                        if (catsDtos.IsDeleted)
-                        {
-                            existingSpec.IsDeleted = true;
-                            existingSpec.UpdatedBy = userId;
-                            existingSpec.DateUpdated = DateTime.UtcNow;
-                            await _unitOfWork.ProductCategories.DeleteAsync(existingSpec);
-                        }
-                        else
-                        {
-                            _mapper.Map(catsDto, existingSpec);
-                            existingSpec.IsDeleted = false;
-                            existingSpec.UpdatedBy = userId;
-                            existingSpec.DateUpdated = DateTime.UtcNow;
-                            await _unitOfWork.ProductCategories.UpdateAsync(existingSpec);
-                        }
-                    }
-                    else if (!catsDtos.IsDeleted)
-                    {
-                        if (!await _unitOfWork.Products.CategoryExistsAsync(catsDtos.CategoriesId))
-                        {
-                            throw new Exception($"Category with ID {catsDtos.CategoriesId} does not exist.");
-                        }
-
-                        var newSpec = _mapper.Map<ProductCategories>(catsDto);
-                        newSpec.ProductId = productId;
-                        newSpec.CreatedBy = userId;
-                        newSpec.DateCreated = DateTime.UtcNow;
-                        newSpec.IsDeleted = false;
-
-                        await _unitOfWork.ProductCategories.CreateAsync(newSpec);
-                    }
-                }
-                else
-                {
-                    var existingBySpecId = existingSpecsList.FirstOrDefault(cats => cats.CategoryId == catsDtos.CategoriesId);
-
-                    if (existingBySpecId != null)
-                    {
-                        if (catsDtos.IsDeleted)
-                        {
-                            existingBySpecId.IsDeleted = true;
-                            existingBySpecId.UpdatedBy = userId;
-                            existingBySpecId.DateUpdated = DateTime.UtcNow;
-                            await _unitOfWork.ProductCategories.DeleteAsync(existingBySpecId);
-                        }
-                        else
-                        {
-                            if (existingBySpecId.IsDeleted)
-                            {
-                                if (!await _unitOfWork.Products.CategoryExistsAsync(catsDtos.CategoriesId))
-                                {
-                                    throw new Exception($"Category with ID {catsDtos.CategoriesId} does not exist.");
-                                }
-
-                                var newSpec = _mapper.Map<ProductCategories>(catsDtos);
-                                newSpec.ProductId = productId;
-                                newSpec.CreatedBy = userId;
-                                newSpec.DateCreated = DateTime.UtcNow;
-                                newSpec.IsDeleted = false;
-
-                                await _unitOfWork.ProductCategories.CreateAsync(newSpec);
-                            }
-                            else
-                            {
-                                _mapper.Map(catsDtos, existingBySpecId);
-                                existingBySpecId.UpdatedBy = userId;
-                                existingBySpecId.DateUpdated = DateTime.UtcNow;
-                                await _unitOfWork.ProductCategories.UpdateAsync(existingBySpecId);
-                            }
-                        }
-                    }
-                    else if (!catsDtos.IsDeleted)
-                    {
-                        if (!await _unitOfWork.Products.CategoryExistsAsync(catsDtos.CategoriesId))
-                        {
-                            throw new Exception($"Category with ID {catsDtos.CategoriesId} does not exist.");
-                        }
-
-                        var newSpec = _mapper.Map<ProductCategories>(catsDtos);
-                        newSpec.ProductId = productId;
-                        newSpec.CreatedBy = userId;
-                        newSpec.DateCreated = DateTime.UtcNow;
-                        newSpec.IsDeleted = false;
-
-                        await _unitOfWork.ProductCategories.CreateAsync(newSpec);
-                    }
-                }
+                cat.IsDeleted = true;
+                cat.UpdatedBy = userId;
+                cat.DateUpdated = DateTime.UtcNow;
+                await _unitOfWork.ProductCategories.DeleteAsync(cat);
             }
 
-            await _unitOfWork.SaveChangesAsync();
+            // 3. Identify what to ADD or REACTIVATE
+            foreach (var dto in dtoCats.Where(d => !d.IsDeleted))
+            {
+                var existingInDb = dbCategories.FirstOrDefault(db => db.CategoryId == dto.CategoryId);
 
-            var freshSpecs = await _unitOfWork.ProductCategories.GetAsync(
-                new ProductCategoriesResourceParameters { ProductId = productId, PageSize = 1000 });
-            var activeSpecs = freshSpecs.productCategories.Where(spec => !spec.IsDeleted).ToList();
+                if (existingInDb == null)
+                {
+                    // Fully new link - Check if category exists first
+                    if (!await _unitOfWork.Products.CategoryExistsAsync(dto.CategoryId))
+                        throw new Exception($"Category {dto.CategoryId} does not exist.");
 
-
-            _logger.LogInformation($"Finished updating specs for product {productId}");
+                    var newLink = new ProductCategories
+                    {
+                        ProductId = productId,
+                        CategoryId = dto.CategoryId,
+                        CreatedBy = userId,
+                        DateCreated = DateTime.UtcNow,
+                        IsDeleted = false
+                    };
+                    await _unitOfWork.ProductCategories.CreateAsync(newLink);
+                }
+                else if (existingInDb.IsDeleted)
+                {
+                    // Reactivate an old link that was previously soft-deleted
+                    existingInDb.IsDeleted = false;
+                    existingInDb.UpdatedBy = userId;
+                    existingInDb.DateUpdated = DateTime.UtcNow;
+                    await _unitOfWork.ProductCategories.UpdateAsync(existingInDb);
+                }
+            }
         }
     }
 }

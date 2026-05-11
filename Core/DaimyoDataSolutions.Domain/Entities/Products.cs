@@ -8,6 +8,6 @@ namespace DaimyoDataSolutions.Domain.Entities
         public string? Description { get; set; }
         public decimal? Price { get; set; }
         public bool? IsActive { get; set; }
-        public List<ProductCategories> ProductCategories { get; set; } = new List<ProductCategories>();
+        public ICollection<ProductCategories> ProductCategories { get; set; } = new List<ProductCategories>();
     }
 }
