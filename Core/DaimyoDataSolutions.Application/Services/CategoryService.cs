@@ -74,8 +74,20 @@ namespace DaimyoDataSolutions.Application.Services
 
                 _unitOfWork.CreateTransaction();
 
-                _unitOfWork.Commit();
-                return SuccessResult();
+                try
+                {
+                    await _unitOfWork.Categories.DeleteAsync(record);
+
+                    await _unitOfWork.SaveChangesAsync();
+                    _unitOfWork.Commit();
+
+                    return SuccessResult();
+                }
+                catch (Exception ex)
+                {
+                    _unitOfWork.Rollback();
+                    throw;
+                }
             }
             catch (Exception ex)
             {

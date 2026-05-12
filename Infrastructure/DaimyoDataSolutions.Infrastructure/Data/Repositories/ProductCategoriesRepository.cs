@@ -24,6 +24,7 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
             {
                 ProductId = productCategories.ProductId,
                 CategoryId = productCategories.CategoryId,
+                CategoryName = productCategories.CategoryName,
                 CreatedBy = productCategories.CreatedBy,
                 DateCreated = productCategories.DateCreated,
                 IsDeleted = productCategories.IsDeleted
@@ -47,6 +48,7 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
                 ID = productCategories.Id,
                 ProductId = productCategories.ProductId,
                 CategoryId = productCategories.CategoryId,
+                CategoryName = productCategories.CategoryName,
                 UpdatedBy = productCategories.UpdatedBy,
                 DateUpdated = productCategories.DateUpdated
             };

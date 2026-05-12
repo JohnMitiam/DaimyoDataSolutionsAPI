@@ -56,7 +56,8 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
                 FROM Products p 
                 LEFT JOIN ProductCategories pc ON p.Id = pc.ProductId AND pc.IsDeleted = 0
                 LEFT JOIN Category c ON pc.CategoryId = c.Id 
-                WHERE p.IsDeleted = 0 ";
+                WHERE p.IsDeleted = 0 
+                AND (pc.IsDeleted = 0)";
 
             var dataSql = "SELECT p.*, pc.*, c.* " +
                           baseFromClause +
