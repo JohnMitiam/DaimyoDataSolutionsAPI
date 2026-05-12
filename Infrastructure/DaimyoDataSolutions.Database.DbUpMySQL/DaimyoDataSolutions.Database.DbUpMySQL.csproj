@@ -25,6 +25,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Page Include="DatabaseSnapshot\Procedures\sp_DeleteProductCategories.sql" />
+    <Page Include="DatabaseSnapshot\Procedures\sp_GetProductCategoriesById.sql" />
+    <Page Include="DatabaseSnapshot\Procedures\sp_UpdateProductCategories.sql" />
+    <Page Include="DatabaseSnapshot\Procedures\sp_CreateProductCategories.sql" />
     <Page Include="DatabaseSnapshot\Procedures\sp_CreateProduct.sql" />
     <Page Include="DatabaseSnapshot\Procedures\sp_DeleteProduct.sql" />
     <Page Include="DatabaseSnapshot\Procedures\sp_GetProductById.sql" />

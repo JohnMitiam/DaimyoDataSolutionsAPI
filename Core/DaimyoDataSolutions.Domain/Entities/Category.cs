@@ -8,6 +8,7 @@ namespace DaimyoDataSolutions.Domain.Entities
         public string? Description { get; set; }
         public string? Icon { get; set; }
 
-        public virtual ICollection<Products> Products { get; set; } = new HashSet<Products>();
+        //public virtual ICollection<Products> Products { get; set; } = new HashSet<Products>();
+        public ICollection<ProductCategories> ProductCategories { get; set; }  = new List<ProductCategories>();
     }
 }

@@ -2,7 +2,6 @@
 using DaimyoDataSolutions.Domain.Entities.Base;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System.Security.Claims;
 
 namespace DaimyoDataSolutions.Infrastructure.Data
@@ -23,6 +22,7 @@ namespace DaimyoDataSolutions.Infrastructure.Data
         // DbSetes
         public DbSet<Affiliate> Affiliate { get; set; }
         public DbSet<Products> Product { get; set; }
+        public DbSet<ProductCategories> ProductCategories { get; set; }
         public DbSet<Category> Category { get; set; }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -63,26 +63,29 @@ namespace DaimyoDataSolutions.Infrastructure.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<Category>(entity =>
-            {
-                entity.ToTable("Category");
-                entity.HasIndex(a => a.Name).IsUnique();
-                entity.Property(e => e.Icon).HasColumnType("MEDIUMTEXT");
-                entity.HasQueryFilter(e => !e.IsDeleted);
-            });
+            modelBuilder.Entity<Products>()
+                .ToTable("Products", (string)null)
+                .HasMany(p => p.ProductCategories)
+                .WithOne(p => p.Product)
+                .HasForeignKey(pi => pi.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<Affiliate>(entity =>
-            {
-                entity.ToTable("Affiliate");
-                entity.HasIndex(a => a.Name).IsUnique();
-                entity.HasQueryFilter(e => !e.IsDeleted);
-            });
+            modelBuilder.Entity<Category>()
+                .HasMany(s => s.ProductCategories)
+                .WithOne(ps => ps.Category)
+                .HasForeignKey(pc => pc.CategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<Products>(entity => {
-                entity.ToTable("Products");
-                entity.HasIndex(a => a.Name).IsUnique();
-                entity.HasQueryFilter(e => !e.IsDeleted);
-            });
+            modelBuilder.Entity<Affiliate>()
+                .HasIndex(aff => aff.Name)
+                .IsUnique();
+
+            modelBuilder.Entity<Category>()
+                .HasIndex(c => c.Name);
+
+            modelBuilder.Entity<Products>().HasQueryFilter(p => !p.IsDeleted);
+            modelBuilder.Entity<Category>().HasQueryFilter(p => !p.IsDeleted);
+            modelBuilder.Entity<Affiliate>().HasQueryFilter(p => !p.IsDeleted);
         }
     }
 }

@@ -75,13 +75,13 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
             return result;
         }
 
-        public async Task<bool> DeleteAsync(int categoryId)
+        public async Task<bool> DeleteAsync(Category category)
         {
             var query = $@"sp_DeleteCategory";
 
             var queryParams = new
             {
-                CategoryID = categoryId
+                CategoryID = category.Id
             };
 
             await _dbSession.Connection.ExecuteAsync(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure);

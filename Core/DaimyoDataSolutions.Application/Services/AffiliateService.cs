@@ -68,12 +68,13 @@ namespace DaimyoDataSolutions.Application.Services
                     return FailedResult(ServiceConstants.RecordNotFound);
                 }
 
+                record.IsDeleted = true;
+                record.UpdatedBy = userId;
+                record.DateUpdated = DateTime.UtcNow;
+
                 _unitOfWork.CreateTransaction();
 
-                await _unitOfWork.Affiliate.DeleteAsync(record.Id);
-
                 _unitOfWork.Commit();
-
                 return SuccessResult();
             }
             catch (Exception ex)

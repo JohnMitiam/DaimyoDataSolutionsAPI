@@ -25,35 +25,7 @@ namespace DaimyoDataSolutions.API.Authentication
             _serviceProvider = serviceProvider;
             _configuration = configuration;
         }
-
-        // NEW CODE: Service provider to create scopes for DbContext
-        //private async Task EnsureUserProfileExistsAsync(string firebaseUid)
-        //{
-        //    using var scope = _serviceProvider.CreateScope();
-        //    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
-        //    var exists = await context.UserProfiles
-        //        .AnySync(up => up.FirebaseUid == firebaseUid);
-
-        //    if (!exists)
-        //    {
-        //        var userProfile = new UserProfile
-        //        {
-        //            FirebaseUid = firebaseUid,
-        //            Address = null,
-        //            //CompanyName = null,
-        //            //CompanyAddress = null,
-        //            CreatedBy = firebaseUid,
-        //            DateCreated = DateTime.UtcNow
-        //        };
-
-        //        context.UserProfiles.Add(userProfile);
-        //        await context.SaveChangesAsync();
-
-        //        Logger.LogInformation("Auto-created UserProfile for Firebase UID: {Uid}", firebaseUid);
-        //    }
-        //}
-
+        
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             string? authHeader = Request.Headers["Authorization"];

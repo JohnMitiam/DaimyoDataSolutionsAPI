@@ -13,14 +13,14 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
     {
         private readonly DatabaseSession _dbSession;
 
-        public ProductRepository(DatabaseSession _dbSession)
+        public ProductRepository(DatabaseSession dbSession)
         {
-            this._dbSession = _dbSession;
+            _dbSession = dbSession;
         }
 
         public async Task<Products> CreateAsync(Products product)
         {
-            var query = $@"sp_CreateProduct";
+            var query = @"sp_CreateProduct";
 
             var queryParams = new
             {
@@ -30,34 +30,17 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
                 IsActive = product.IsActive,
                 CreatedBy = product.CreatedBy,
                 DateCreated = product.DateCreated,
-                IsDeleted = product.IsDeleted,
+                IsDeleted = product.IsDeleted
             };
 
-            product.Id = await _dbSession.Connection.ExecuteScalarAsync<int>(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure);
+            product.Id = await _dbSession.Connection.ExecuteScalarAsync<int>(
+                query,
+                queryParams,
+                _dbSession.Transaction,
+                commandType: CommandType.StoredProcedure
+            );
 
             return product;
-        }
-
-        public async Task<bool> AddProductCategoriesAsync(int productId, IEnumerable<int> categoryIds)
-        {
-            if (categoryIds == null || !categoryIds.Any()) return true;
-
-            await RemoveProductCategoriesAsync(productId);
-            var uniqueIds = categoryIds.Distinct().ToList();
-
-            var sql = "INSERT INTO ProductCategories (ProductsId, Id) VALUES (@ProductsId, @Id);";
-            var parameters = uniqueIds.Select(id => new { ProductsId = productId, Id = id });
-
-            await _dbSession.Connection.ExecuteAsync(sql, parameters, _dbSession.Transaction);
-            return true;
-        }
-
-        public async Task<bool> RemoveProductCategoriesAsync(int productId)
-        {
-            await _dbSession.Connection.ExecuteAsync(
-                "DELETE FROM ProductCategories WHERE ProductsId = @ProductsId;",
-                new { ProductsId = productId }, _dbSession.Transaction);
-            return true;
         }
 
         public async Task<(IEnumerable<Products> products, int recordCount)> GetAsync(ProductResourceParameters resourceParameters)
@@ -69,110 +52,130 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
                 resourceParameters.PageSize
             );
 
-            var baseQuery = "FROM Products WHERE IsDeleted = 0 ";
-            var dataSql = "SELECT * " + baseQuery + queryParamBuilder.GetSearchSQLQuery() + queryParamBuilder.GetFilterSQLQuery() + queryParamBuilder.GetPaginationSQLQuery();
-            var countSql = "SELECT COUNT(*) " + baseQuery + queryParamBuilder.GetSearchSQLQuery() + queryParamBuilder.GetFilterSQLQuery();
+            var baseFromClause = @"
+                FROM Products p 
+                LEFT JOIN ProductCategories pc ON p.Id = pc.ProductId AND pc.IsDeleted = 0
+                LEFT JOIN Category c ON pc.CategoryId = c.Id 
+                WHERE p.IsDeleted = 0 
+                AND (pc.IsDeleted = 0)";
 
-            var products = (await _dbSession.Connection.QueryAsync<Products>(dataSql, queryParamBuilder.Parameters)).ToList();
-            var count = await _dbSession.Connection.ExecuteScalarAsync<int>(countSql, queryParamBuilder.Parameters);
+            var dataSql = "SELECT p.*, pc.*, c.* " +
+                          baseFromClause +
+                          queryParamBuilder.GetSearchSQLQuery() +
+                          queryParamBuilder.GetFilterSQLQuery();
 
-            if (products.Any())
-            {
-                var productIds = products.Select(p => p.Id).ToList();
+            var paginationSQL = queryParamBuilder.GetPaginationSQLQuery().Replace("ORDER BY Id", "ORDER BY p.Id");
 
-                // ADD pc.ProductId to the SELECT list here:
-                var sql = @"SELECT pc.ProductsId, c.Id, c.Name 
-                    FROM ProductCategories pc 
-                    INNER JOIN Category c ON pc.Id = c.Id 
-                    WHERE pc.ProductsId IN @Ids";
+            var finalDataQuery = dataSql + paginationSQL;
+            var finalCountQuery = "SELECT COUNT(DISTINCT p.Id) " + baseFromClause + queryParamBuilder.GetSearchSQLQuery() + queryParamBuilder.GetFilterSQLQuery();
 
-                var details = await _dbSession.Connection.QueryAsync<dynamic>(sql, new { Ids = productIds }, _dbSession.Transaction);
+            var productDict = new Dictionary<int, Products>();
 
-                foreach (var product in products)
+            await _dbSession.Connection.QueryAsync<Products, ProductCategories, Category, Products>(
+                finalDataQuery,
+                (product, pc, category) =>
                 {
-                    product.ProductCategories = details
-                        .Where(d => d.ProductsId == product.Id) // This will now work!
-                        .Select(m => new ProductCategories
-                        {
-                            Id = m.Id,
-                            Name = m.Name
-                        }).ToList();
-                }
-            }
-            return (products, count);
+                    if (!productDict.TryGetValue(product.Id, out var currentProduct))
+                    {
+                        currentProduct = product;
+                        currentProduct.ProductCategories = new List<ProductCategories>();
+                        productDict.Add(currentProduct.Id, currentProduct);
+                    }
+
+                    if (pc != null && pc.Id != 0)
+                    {
+                        pc.Category = category;
+                        currentProduct.ProductCategories.Add(pc);
+                    }
+                    return currentProduct;
+                },
+                queryParamBuilder.Parameters,
+                _dbSession.Transaction,
+                splitOn: "Id,Id"
+            );
+
+            var totalCount = await _dbSession.Connection.ExecuteScalarAsync<int>(finalCountQuery, queryParamBuilder.Parameters);
+
+            return (productDict.Values, totalCount);
         }
 
         public async Task<(IEnumerable<Products> products, int count)> GetMyProductAsync(string userId)
         {
-            // 1. Fetch the products filtered by CreatedBy
-            var sql = @"
-                SELECT * FROM Products 
-                WHERE CreatedBy = @UserId 
-                ORDER BY DateCreated DESC";
+            var baseFromClause = @"
+                FROM Products p 
+                LEFT JOIN ProductCategories pc ON p.Id = pc.ProductId AND pc.IsDeleted = 0
+                LEFT JOIN Category c ON pc.CategoryId = c.Id 
+                WHERE p.CreatedBy = @UserId AND p.IsDeleted = 0 ";
 
-            var products = (await _dbSession.Connection.QueryAsync<Products>(
+            var sql = "SELECT p.*, pc.*, c.* " + baseFromClause + " ORDER BY p.DateCreated DESC";
+
+            var productDict = new Dictionary<int, Products>();
+
+            await _dbSession.Connection.QueryAsync<Products, ProductCategories, Category, Products>(
                 sql,
-                new { UserId = userId },
-                _dbSession.Transaction)).ToList();
-
-            int count = products.Count;
-
-            // 2. Fetch the Categories for these specific products
-            if (products.Any())
-            {
-                var productIds = products.Select(p => p.Id).ToList();
-
-                var sqlCategories = @"
-                SELECT pc.ProductsId, c.Id, c.Name 
-                FROM ProductCategories pc
-                INNER JOIN Category c ON pc.Id = c.Id
-                WHERE pc.ProductsId IN @Ids";
-
-                var details = await _dbSession.Connection.QueryAsync<dynamic>(
-                    sqlCategories,
-                    new { Ids = productIds },
-                    _dbSession.Transaction
-                );
-
-                // 3. Map Categories back to the Product objects
-                foreach (var product in products)
+                (product, pc, category) =>
                 {
-                    product.ProductCategories = details
-                        .Where(d => (int)d.ProductsId == product.Id)
-                        .Select(m => new ProductCategories
-                        {
-                            Id = m.Id,
-                            Name = m.Name
-                        }).ToList();
-                }
-            }
+                    if (!productDict.TryGetValue(product.Id, out var currentProduct))
+                    {
+                        currentProduct = product;
+                        currentProduct.ProductCategories = new List<ProductCategories>();
+                        productDict.Add(currentProduct.Id, currentProduct);
+                    }
 
-            return (products, count);
+                    if (pc != null && pc.Id != 0)
+                    {
+                        pc.Category = category;
+                        currentProduct.ProductCategories.Add(pc);
+                    }
+                    return currentProduct;
+                },
+                new { UserId = userId },
+                _dbSession.Transaction,
+                splitOn: "Id,Id"
+            );
+
+            return (productDict.Values, productDict.Count);
         }
 
         public async Task<Products?> GetByIdAsync(int productId)
         {
-            var product = await _dbSession.Connection.QueryFirstOrDefaultAsync<Products>(
-                "sp_GetProductById", new { ID = productId }, _dbSession.Transaction, commandType: CommandType.StoredProcedure);
+            var sql = "sp_GetProductById";
+            var productDict = new Dictionary<int, Products>();
 
-            if (product != null)
-            {
-                var sql = @"SELECT c.Id, c.Name FROM ProductCategories pc 
-                INNER JOIN Category c ON pc.Id = c.Id 
-                WHERE pc.ProductsId = @ProductsId";
+            var result = await _dbSession.Connection.QueryAsync<Products, ProductCategories, Category, Products>(
+                sql,
+                (product, pc, category) =>
+                {
+                    if (!productDict.TryGetValue(product.Id, out var currentProduct))
+                    {
+                        currentProduct = product;
+                        currentProduct.ProductCategories = new List<ProductCategories>();
+                        productDict.Add(currentProduct.Id, currentProduct);
+                    }
 
-                product.ProductCategories = (await _dbSession.Connection.QueryAsync<ProductCategories>(
-                    sql, new { ProductsId = productId }, _dbSession.Transaction)).ToList();
-            }
-            return product;
+                    if (pc != null)
+                    {
+                        pc.Category = category;
+                        pc.ProductId = currentProduct.Id;
+                        currentProduct.ProductCategories.Add(pc);
+                    }
+                    return currentProduct;
+                },
+                new { p_ID = productId },
+                _dbSession.Transaction,
+                commandType: CommandType.StoredProcedure,
+                splitOn: "ProductCategoryId,CategoryId"
+            );
+
+            return result.FirstOrDefault();
         }
 
         public async Task<bool> UpdateAsync(Products product)
         {
-            var query = $@"sp_UpdateProduct";
+            var query = @"sp_UpdateProduct";
 
             var queryParams = new
-            { 
+            {
                 ID = product.Id,
                 Name = product.Name,
                 Description = product.Description,
@@ -181,24 +184,43 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
                 UpdatedBy = product.UpdatedBy,
                 DateUpdated = product.DateUpdated
             };
+
             await _dbSession.Connection.ExecuteAsync(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure)
                 .ConfigureAwait(false);
 
             return true;
         }
 
-        public async Task<bool> DeleteAsync(int productId)
+        public async Task<bool> DeleteAsync(int id)
         {
-            var query = $@"sp_DeleteProduct";
+            var query = @"sp_DeleteProduct";
 
-            var queryParams = new
-            {
-                ProductID = productId
-            };
+            var rowsAffected = await _dbSession.Connection.ExecuteAsync(
+                query,
+                new { ProductID = id },
+                _dbSession.Transaction,
+                commandType: CommandType.StoredProcedure
+            );
 
-            await _dbSession.Connection.ExecuteAsync(query, queryParams, _dbSession.Transaction, commandType: CommandType.StoredProcedure);
+            return rowsAffected > 0;
+        }
 
-            return true;
+        public async Task<bool> DeleteAsync(Products product)
+        {
+            return await DeleteAsync(product.Id);
+        }
+
+        public async Task<bool> CategoryExistsAsync(int specificationId)
+        {
+            var sql = "SELECT COUNT(1) FROM Category WHERE Id = @Id AND IsDeleted = 0";
+
+            var count = await _dbSession.Connection.ExecuteScalarAsync<int>(
+                sql,
+                new { Id = specificationId },
+                _dbSession.Transaction
+            );
+
+            return count > 0;
         }
     }
 }

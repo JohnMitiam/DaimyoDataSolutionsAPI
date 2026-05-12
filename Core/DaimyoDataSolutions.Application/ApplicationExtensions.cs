@@ -6,6 +6,7 @@ using DaimyoDataSolutions.Application.Services;
 using DaimyoDataSolutions.Application.Validators.AffiliateValidators;
 using DaimyoDataSolutions.Application.Validators.ProductValidators;
 using DaimyoDataSolutions.Application.Validators.CategoryValidators;
+using DaimyoDataSolutions.Application.Validators.ProductCategoriesValidators;
 
 namespace DaimyoDataSolutions.Application
 {
@@ -17,10 +18,12 @@ namespace DaimyoDataSolutions.Application
 
             services.AddTransient<IAffiliateService, AffiliateService>();
             services.AddTransient<IProductService, ProductService>();
+            //services.AddTransient<IProductCategoriesService, ProductCat>();
             services.AddTransient<ICategoryService, CategoryService>();
 
             services.AddTransient<IAffiliateValidator, AffiliateValidator>();
             services.AddTransient<IProductValidator, ProductValidator>();
+            services.AddTransient<IProductCategoriesValidator, ProductCategoriesValidator>();
             services.AddTransient<ICategoryValidator, CategoryValidator>();
 
             return services;

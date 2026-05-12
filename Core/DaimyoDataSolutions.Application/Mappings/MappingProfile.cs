@@ -3,6 +3,7 @@ using DaimyoDataSolutions.Application.DTOs.Category;
 using DaimyoDataSolutions.Application.DTOs.Product;
 using DaimyoDataSolutions.Application.DTOs.Affiliate;
 using DaimyoDataSolutions.Domain.Entities;
+using DaimyoDataSolutions.Application.DTOs.ProductCategories;
 
 namespace DaimyoDataSolutions.Application.Mappings
 {
@@ -14,13 +15,21 @@ namespace DaimyoDataSolutions.Application.Mappings
             CreateMap<Affiliate, UpdateAffiliateDTO>().ReverseMap();
             CreateMap<Affiliate, ViewAffiliateDTO>();
 
-            CreateMap<ProductCategories, ViewProductCategoryDTO>();
-
             CreateMap<BaseProductDTO, Products>()
                 .ForMember(dest => dest.ProductCategories, opt => opt.Ignore());
             CreateMap<Products, CreateProductDTO>().ReverseMap();
             CreateMap<Products, UpdateProductDTO>().ReverseMap();
             CreateMap<Products, ViewProductDTO>();
+
+            CreateMap<ProductCategories, ViewProductCategoriesDTO>()
+                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category.Name))
+                .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.CategoryId));
+            CreateMap<CreateProductCategoriesDTO, ProductCategories>()
+                .ForMember(dest => dest.Product, opt => opt.Ignore())
+                .ForMember(dest => dest.Category, opt => opt.Ignore());
+            CreateMap<UpdateProductCategoriesDTO, ProductCategories>()
+                .ForMember(dest => dest.Product, opt => opt.Ignore())
+                .ForMember(dest => dest.Category, opt => opt.Ignore());
 
             CreateMap<Category, CreateCategoryDTO>().ReverseMap();
             CreateMap<Category, UpdateCategoryDTO>().ReverseMap();

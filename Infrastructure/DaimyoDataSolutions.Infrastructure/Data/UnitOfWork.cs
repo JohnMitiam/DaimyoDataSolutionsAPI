@@ -1,5 +1,5 @@
 ﻿using DaimyoDataSolutions.Application.Interfaces.Data;
-using DaimyoDataSolutions.Infrastructure.Data.Repositories;
+using System.Threading.Tasks;
 
 namespace DaimyoDataSolutions.Infrastructure.Data
 {
@@ -8,6 +8,7 @@ namespace DaimyoDataSolutions.Infrastructure.Data
         private readonly DatabaseSession _dbSession;
         private readonly IAffiliateRepository _affiliateRepository;
         private readonly IProductRepository _productRepository;
+        private readonly IProductCategoriesRepository _productCategoriesRepository;
         private readonly ICategoryRepository _categoryRepository;
 
         public UnitOfWork
@@ -15,53 +16,70 @@ namespace DaimyoDataSolutions.Infrastructure.Data
                 DatabaseSession dbSession,
                 IAffiliateRepository affiliateRepository,
                 IProductRepository productRepository,
+                IProductCategoriesRepository productCategoriesRepository,
                 ICategoryRepository categoryRepository
             )
         {
             _dbSession = dbSession;
             _affiliateRepository = affiliateRepository;
             _productRepository = productRepository;
+            _productCategoriesRepository = productCategoriesRepository;
             _categoryRepository = categoryRepository;
         }
 
         public IAffiliateRepository Affiliate => _affiliateRepository;
         public IProductRepository Products => _productRepository;
-
+        public IProductCategoriesRepository ProductCategories => _productCategoriesRepository;
         public ICategoryRepository Categories => _categoryRepository;
-
-        public void Commit()
-        {
-            // Commit the transaction
-            if (_dbSession.Transaction != null)
-                _dbSession.Transaction.Commit();
-            Dispose();
-        }
 
         public void CreateTransaction()
         {
-            // Create a new transaction
-            if (_dbSession.Connection != null)
-            {
-                _dbSession.Transaction = _dbSession.Connection.BeginTransaction();
-            }
-            else
-            {
-                throw new Exception("Database Session is null");
-            }
+            // Assuming DatabaseSession has a method to begin a transaction
+            // on its internal IDbConnection
+            _dbSession.Transaction = _dbSession.Connection.BeginTransaction();
         }
 
-        public void Dispose()
+        public void Commit()
         {
-            // Dispose of the unit of work
-            _dbSession.Transaction?.Dispose();
+            try
+            {
+                _dbSession.Transaction?.Commit();
+            }
+            catch
+            {
+                Rollback();
+                throw;
+            }
+            finally
+            {
+                DisposeTransaction();
+            }
         }
 
         public void Rollback()
         {
-            // Rollback the transaction
-            if (_dbSession.Transaction != null)
-                _dbSession.Transaction.Rollback();
-            Dispose();
+            _dbSession.Transaction?.Rollback();
+            DisposeTransaction();
+        }
+        public async Task<int> SaveChangesAsync()
+        {
+            return await Task.FromResult(1);
+        }
+
+        public void ClearChangeTracker()
+        {
+        }
+
+        private void DisposeTransaction()
+        {
+            _dbSession.Transaction?.Dispose();
+            _dbSession.Transaction = null;
+        }
+
+        public void Dispose()
+        {
+            DisposeTransaction();
+            _dbSession.Connection?.Dispose();
         }
     }
 }
