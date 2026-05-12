@@ -1,5 +1,6 @@
 ﻿using DaimyoDataSolutions.Application.DTOs.Category;
 using DaimyoDataSolutions.Application.DTOs.ProductCategories;
+using DaimyoDataSolutions.Application.DTOs.ProductImages;
 
 namespace DaimyoDataSolutions.Application.DTOs.Product
 {
@@ -11,5 +12,6 @@ namespace DaimyoDataSolutions.Application.DTOs.Product
         public DateTime DateCreated { get; set; }
         public DateTime? DateUpdated { get; set; }
         public List<ViewProductCategoriesDTO>? ProductCategories { get; set; }
+        public List<ViewProductImagesDTO>? ProductImages { get; set; }
     }
 }

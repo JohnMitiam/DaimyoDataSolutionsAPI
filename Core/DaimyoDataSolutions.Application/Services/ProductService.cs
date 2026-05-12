@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using DaimyoDataSolutions.Application.DTOs.Product;
+using DaimyoDataSolutions.Application.DTOs.ProductImages;
 using DaimyoDataSolutions.Application.Interfaces.Data;
 using DaimyoDataSolutions.Application.Interfaces.Services;
 using DaimyoDataSolutions.Application.Interfaces.Validator;
@@ -15,6 +16,7 @@ namespace DaimyoDataSolutions.Application.Services
     {
         private readonly IProductValidator _productValidator;
         private readonly IProductCategoriesValidator _categoryValidator;
+        private readonly IProductImagesValidator _imageValidator;
         private readonly ILogger<ProductService> _logger;
         private readonly IMapper _mapper;
         private readonly IUnitOfWork _unitOfWork;
@@ -24,10 +26,12 @@ namespace DaimyoDataSolutions.Application.Services
             IMapper mapper,
             ILogger<ProductService> logger,
             IProductValidator productValidator,
-            IProductCategoriesValidator categoryValidator)
+            IProductCategoriesValidator categoryValidator,
+            IProductImagesValidator imagesValidator)
         {
             _productValidator = productValidator;
             _categoryValidator = categoryValidator;
+            _imageValidator = imagesValidator;
             _logger = logger;
             _mapper = mapper;
             _unitOfWork = unitOfWork;
@@ -39,18 +43,15 @@ namespace DaimyoDataSolutions.Application.Services
             productEntity.CreatedBy = userId;
             productEntity.DateCreated = DateTime.UtcNow;
 
-            // 1. Validate Product
             var validation = _productValidator.IsValid(productEntity);
             if (!validation.isSuccess) return FailedResult(validation.errorMessages);
 
             _unitOfWork.CreateTransaction();
             try
             {
-                // 2. Create Product first to get the ID
                 var createdProduct = await _unitOfWork.Products.CreateAsync(productEntity);
                 await _unitOfWork.SaveChangesAsync();
 
-                // 3. Handle Categories
                 if (productDto.Categories != null && productDto.Categories.Any())
                 {
                     foreach (var catDto in productDto.Categories)
@@ -59,7 +60,7 @@ namespace DaimyoDataSolutions.Application.Services
 
                         var productCategory = new ProductCategories
                         {
-                            ProductId = createdProduct.Id, // Use the new ID
+                            ProductId = createdProduct.Id,
                             CategoryId = catDto.CategoryId,
                             CategoryName = categoryInfo.Name,
                             CreatedBy = userId,
@@ -71,6 +72,26 @@ namespace DaimyoDataSolutions.Application.Services
                     await _unitOfWork.SaveChangesAsync();
                 }
 
+                if (productDto.Images != null && productDto.Images.Any())
+                {
+                    foreach (var imageDto in productDto.Images)
+                    {
+                        var productImage = new ProductImages
+                        {
+                            ProductId = createdProduct.Id,
+                            ImageData = imageDto.ImageData,
+                            MimeType = imageDto.MimeType,
+                            IsPrimary = imageDto.IsPrimary,
+                            CreatedBy = userId,
+                            DateCreated = DateTime.UtcNow
+                        };
+
+                        await _unitOfWork.ProductImages.CreateAsync(productImage);
+                    }
+
+                    await _unitOfWork.SaveChangesAsync();
+                }
+
                 _unitOfWork.Commit();
 
                 var result = await _unitOfWork.Products.GetByIdAsync(createdProduct.Id);
@@ -79,7 +100,7 @@ namespace DaimyoDataSolutions.Application.Services
             catch (Exception ex)
             {
                 _unitOfWork.Rollback();
-                _logger.LogError(ex, "Error creating product with categories");
+                _logger.LogError(ex, "Error creating product");
                 return FailedResult($"Error: {ex.Message}");
             }
         }
@@ -88,16 +109,13 @@ namespace DaimyoDataSolutions.Application.Services
         {
             try
             {
-                // 1. Fetch the existing product record
                 var record = await _unitOfWork.Products.GetByIdAsync(productId);
                 if (record == null) return FailedResult("Product not found.");
 
-                // 2. Map DTO changes to the entity
                 _mapper.Map(productDto, record);
                 record.UpdatedBy = userId;
                 record.DateUpdated = DateTime.UtcNow;
 
-                // 3. Validate the Product Entity
                 var productValidation = _productValidator.IsValid(record);
                 if (!productValidation.isSuccess)
                 {
@@ -108,19 +126,21 @@ namespace DaimyoDataSolutions.Application.Services
 
                 try
                 {
-                    // 4. Update Product Basic Info
                     await _unitOfWork.Products.UpdateAsync(record);
 
-                    // 5. Sync Categories (Delete missing, Add new, Update existing)
                     if (productDto.ProductCategories != null)
                     {
                         await UpdateProductCategoriesAsync(productId, productDto.ProductCategories, userId);
                     }
 
+                    if (productDto.PropertyImages != null)
+                    {
+                        await UpdateProductImagesAsync(productId, productDto.PropertyImages, userId);
+                    }
+
                     await _unitOfWork.SaveChangesAsync();
                     _unitOfWork.Commit();
 
-                    // 6. Return the refreshed data
                     var result = await _unitOfWork.Products.GetByIdAsync(productId);
                     return SuccessResult(_mapper.Map<ViewProductDTO>(result));
                 }
@@ -166,12 +186,12 @@ namespace DaimyoDataSolutions.Application.Services
             try
             {
                 var (products, count) = await _unitOfWork.Products.GetMyProductAsync(userId);
-
                 var productDtos = _mapper.Map<IEnumerable<ViewProductDTO>>(products).ToList();
 
                 return SuccessResult(productDtos);
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 _logger.LogError(ex, "Error fetching managed products for user {UserId}", userId);
                 return FailedResult("An error occurred while fetching your managed products.");
             }
@@ -182,55 +202,85 @@ namespace DaimyoDataSolutions.Application.Services
             try
             {
                 var product = await _unitOfWork.Products.GetByIdAsync(productId);
+                if (product == null) return FailedResult("Product not found.");
+
+                var productDto = _mapper.Map<ViewProductDTO>(product);
+                return SuccessResult(productDto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching product");
+                return FailedResult("An error occurred while fetching the product.");
+            }
+        }
+        public async Task<IServiceResult> DeleteAsync(int productId, string userId)
+        {
+            try
+            {
+                // 1. Verify the product exists first
+                var product = await _unitOfWork.Products.GetByIdAsync(productId);
                 if (product == null)
                 {
                     return FailedResult("Product not found.");
                 }
 
-                var productDto = _mapper.Map<ViewProductDTO>(product);
-
-                return SuccessResult(productDto);
-            }
-            catch (Exception ex) {
-                _logger.LogError(ex, "Error fetching product");
-                return FailedResult("An error occurred while fetching the product.");
-            }
-        }
-
-        public async Task<IServiceResult> DeleteAsync(int productId, string userId)
-        {
-            try
-            {
-                var product = await _unitOfWork.Products.GetByIdAsync(productId);
-                if (product == null)
-                {
-                    return FailedResult("Product not found. ");
-                }
-
-                product.IsDeleted = true;
-                product.UpdatedBy = userId;
-                product.DateUpdated = DateTime.UtcNow;
-
                 _unitOfWork.CreateTransaction();
 
                 try
                 {
+                    // 2. Fetch and Soft Delete Categories related ONLY to this product
                     var categoryParams = new ProductCategoriesResourceParameters
+                    {
+                        ProductId = productId,
+                        Page = 1,
+                        PageSize = 1000 // Ensure we get all links for this product
+                    };
+
+                    var (categories, _) = await _unitOfWork.ProductCategories.GetAsync(categoryParams);
+
+                    foreach (var category in categories)
+                    {
+                        // CRITICAL SAFETY CHECK: Ensure the repository didn't return other products' data
+                        if (category.ProductId == productId)
+                        {
+                            category.IsDeleted = true;
+                            category.UpdatedBy = userId;
+                            category.DateUpdated = DateTime.UtcNow;
+                            await _unitOfWork.ProductCategories.DeleteAsync(category);
+                        }
+                    }
+
+                    // 3. Fetch and Soft Delete Images related ONLY to this product
+                    var imageParams = new ProductImagesResourceParameters
                     {
                         ProductId = productId,
                         Page = 1,
                         PageSize = 1000
                     };
-                    var (categories, _) = await _unitOfWork.ProductCategories.GetAsync(categoryParams);
-                    foreach (var category in categories)
+
+                    var (images, _) = await _unitOfWork.ProductImages.GetAsync(imageParams);
+
+                    foreach (var image in images)
                     {
-                        category.IsDeleted = true;
-                        category.UpdatedBy = userId;
-                        category.DateUpdated = DateTime.UtcNow;
-                        await _unitOfWork.ProductCategories.DeleteAsync(category);
+                        // CRITICAL SAFETY CHECK: Prevent accidental deletion of images from other products
+                        if (image.ProductId == productId)
+                        {
+                            image.IsDeleted = true;
+                            image.UpdatedBy = userId;
+                            image.DateUpdated = DateTime.UtcNow;
+                            await _unitOfWork.ProductImages.DeleteAsync(image);
+                        }
                     }
 
+                    // 4. Soft Delete the main Product record
+                    product.IsDeleted = true;
+                    product.UpdatedBy = userId;
+                    product.DateUpdated = DateTime.UtcNow;
+
+                    // We pass the whole object so the Repo can extract the ID and Audit fields
                     await _unitOfWork.Products.DeleteAsync(product);
+
+                    // 5. Finalize the Database Transaction
                     await _unitOfWork.SaveChangesAsync();
                     _unitOfWork.Commit();
 
@@ -238,29 +288,95 @@ namespace DaimyoDataSolutions.Application.Services
                 }
                 catch (Exception ex)
                 {
+                    // Rollback the transaction if any of the steps above fail
                     _unitOfWork.Rollback();
-                    _logger.LogError(ex, "Transaction failed while deleting the product!");
+                    _logger.LogError(ex, "Transaction failed while deleting product {ProductId}", productId);
                     throw;
                 }
             }
             catch (Exception ex)
             {
-                _unitOfWork.Rollback();
-                _logger.LogError($@"{ex.Message}");
-
+                _logger.LogError(ex, "Delete failed for product {ProductId}", productId);
                 return FailedResult(ServiceConstants.RequestProcessingError);
             }
         }
 
+        //public async Task<IServiceResult> DeleteAsync(int productId, string userId)
+        //{
+        //    try
+        //    {
+        //        var product = await _unitOfWork.Products.GetByIdAsync(productId);
+        //        if (product == null) return FailedResult("Product not found. ");
+
+        //        product.IsDeleted = true;
+        //        product.UpdatedBy = userId;
+        //        product.DateUpdated = DateTime.UtcNow;
+
+        //        _unitOfWork.CreateTransaction();
+
+        //        try
+        //        {
+        //            var categoryParams = new ProductCategoriesResourceParameters
+        //            {
+        //                ProductId = productId,
+        //                Page = 1,
+        //                PageSize = 1000
+        //            };
+
+        //            var (categories, _) = await _unitOfWork.ProductCategories.GetAsync(categoryParams);
+        //            foreach (var category in categories)
+        //            {
+        //                category.IsDeleted = true;
+        //                category.UpdatedBy = userId;
+        //                category.DateUpdated = DateTime.UtcNow;
+        //                await _unitOfWork.ProductCategories.DeleteAsync(category);
+        //            }
+
+        //            var imageParams = new ProductImagesResourceParameters
+        //            {
+        //                ProductId = productId,
+        //                Page = 1,
+        //                PageSize = 1000
+        //            };
+
+        //            var (images, _) = await _unitOfWork.ProductImages.GetAsync(imageParams);
+        //            foreach (var image in images)
+        //            {
+        //                image.IsDeleted = true;
+        //                image.UpdatedBy = userId;
+        //                image.DateUpdated = DateTime.UtcNow;
+        //                await _unitOfWork.ProductImages.DeleteAsync(image);
+        //            }
+
+        //            await _unitOfWork.Products.DeleteAsync(product);
+        //            await _unitOfWork.SaveChangesAsync();
+        //            _unitOfWork.Commit();
+
+        //            return SuccessResult();
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            _unitOfWork.Rollback();
+        //            _logger.LogError(ex, "Transaction failed while deleting the product!");
+        //            throw;
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _unitOfWork.Rollback();
+        //        _logger.LogError($"{ex.Message}");
+        //        return FailedResult(ServiceConstants.RequestProcessingError);
+        //    }
+        //}
+
         private async Task UpdateProductCategoriesAsync(int productId, List<UpdateProductCategoriesDTO> dtoCats, string userId)
         {
-            // 1. Get current categories from DB for this product
             var existingData = await _unitOfWork.ProductCategories.GetAsync(
                 new ProductCategoriesResourceParameters { ProductId = productId, PageSize = 1000 });
 
             var dbCategories = existingData.productCategories.ToList();
 
-            // 2. Identify what to REMOVE (In DB but not in the new DTO list)
+            // Identify what to REMOVE
             var incomingCategoryIds = dtoCats.Where(d => !d.IsDeleted).Select(d => d.CategoryId).ToList();
             var toDelete = dbCategories.Where(db => !incomingCategoryIds.Contains(db.CategoryId)).ToList();
 
@@ -272,14 +388,13 @@ namespace DaimyoDataSolutions.Application.Services
                 await _unitOfWork.ProductCategories.DeleteAsync(cat);
             }
 
-            // 3. Identify what to ADD or REACTIVATE
+            // Identify what to ADD or REACTIVATE
             foreach (var dto in dtoCats.Where(d => !d.IsDeleted))
             {
                 var existingInDb = dbCategories.FirstOrDefault(db => db.CategoryId == dto.CategoryId);
 
                 if (existingInDb == null)
                 {
-                    // Fully new link - Check if category exists first
                     if (!await _unitOfWork.Products.CategoryExistsAsync(dto.CategoryId))
                         throw new Exception($"Category {dto.CategoryId} does not exist.");
 
@@ -295,11 +410,65 @@ namespace DaimyoDataSolutions.Application.Services
                 }
                 else if (existingInDb.IsDeleted)
                 {
-                    // Reactivate an old link that was previously soft-deleted
                     existingInDb.IsDeleted = false;
                     existingInDb.UpdatedBy = userId;
                     existingInDb.DateUpdated = DateTime.UtcNow;
                     await _unitOfWork.ProductCategories.UpdateAsync(existingInDb);
+                }
+            }
+        }
+
+        private async Task UpdateProductImagesAsync(int productId, List<UpdateProductImagesDTO> dtoImgs, string userId)
+        {
+            var existingData = await _unitOfWork.ProductImages.GetAsync(
+                new ProductImagesResourceParameters { ProductId = productId, PageSize = 1000 });
+
+            var dbImages = existingData.productImages.ToList();
+
+            // 1. Identify the new Primary ImageData from the DTOs
+            var newPrimaryImageData = dtoImgs.FirstOrDefault(d => d.IsPrimary && !d.IsDeleted)?.ImageData;
+
+            // 2. Identify what to REMOVE
+            var incomingImageDatas = dtoImgs.Where(d => !d.IsDeleted).Select(d => d.ImageData).ToList();
+            var toDelete = dbImages.Where(db => !incomingImageDatas.Contains(db.ImageData)).ToList();
+
+            foreach (var img in toDelete)
+            {
+                img.IsDeleted = true;
+                img.IsPrimary = false; // Ensure deleted images aren't primary
+                img.UpdatedBy = userId;
+                img.DateUpdated = DateTime.UtcNow;
+                await _unitOfWork.ProductImages.DeleteAsync(img);
+            }
+
+            // 3. Identify what to ADD or REACTIVATE
+            foreach (var dto in dtoImgs.Where(d => !d.IsDeleted))
+            {
+                var existingInDb = dbImages.FirstOrDefault(db => db.ImageData == dto.ImageData);
+
+                if (existingInDb == null)
+                {
+                    var newImage = new ProductImages
+                    {
+                        ProductId = productId,
+                        ImageData = dto.ImageData,
+                        MimeType = dto.MimeType,
+                        IsPrimary = dto.ImageData == newPrimaryImageData,
+                        CreatedBy = userId,
+                        DateCreated = DateTime.UtcNow,
+                        IsDeleted = false
+                    };
+                    await _unitOfWork.ProductImages.CreateAsync(newImage);
+                }
+                else
+                {
+                    // Update existing record (Reactivate if soft-deleted)
+                    existingInDb.IsDeleted = false;
+                    existingInDb.IsPrimary = existingInDb.ImageData == newPrimaryImageData;
+
+                    existingInDb.UpdatedBy = userId;
+                    existingInDb.DateUpdated = DateTime.UtcNow;
+                    await _unitOfWork.ProductImages.UpdateAsync(existingInDb);
                 }
             }
         }

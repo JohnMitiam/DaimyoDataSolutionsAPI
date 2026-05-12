@@ -9,5 +9,6 @@ namespace DaimyoDataSolutions.Application.Interfaces.Data
         Task<(IEnumerable<Products> products, int recordCount)> GetAsync(ProductResourceParameters resourceParameters);
         Task<(IEnumerable<Products> products, int count)> GetMyProductAsync(string userId);
         Task<bool> CategoryExistsAsync(int categoryId);
+        Task<bool> ImageExistAsync(int imageId);
     }
 }

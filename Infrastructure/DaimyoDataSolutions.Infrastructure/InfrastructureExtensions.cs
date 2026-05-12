@@ -24,6 +24,7 @@ namespace DaimyoDataSolutions.Infrastructure
             services.AddTransient<IProductRepository, ProductRepository>();
             services.AddTransient<IProductCategoriesRepository, ProductCategoriesRepository>();
             services.AddTransient<ICategoryRepository, CategoryRepository>();
+            services.AddTransient<IProductImagesRepository, ProductImagesRepository>();
 
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 

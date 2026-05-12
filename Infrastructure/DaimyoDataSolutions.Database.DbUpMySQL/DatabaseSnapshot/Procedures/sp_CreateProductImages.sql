@@ -1,24 +1,27 @@
-CREATE PROCEDURE `sp_CreateProductCategories`(
+CREATE PROCEDURE `sp_CreateProductImages`(
 	IN `ProductId` INT,
-	IN `CategoryId` INT,
-    IN `CategoryName` LONGTEXT,
+	IN `ImageData` LONGBLOB,
+    IN `MimeType` LONGTEXT,
+	IN `IsPrimary` TINYINT(1),
 	IN `CreatedBy` LONGTEXT,
 	IN `DateCreated` DATETIME,
 	IN `IsDeleted` TINYINT(1)
 	)
 BEGIN
-	INSERT INTO ProductCategories(
+	INSERT INTO ProductImages(
 		ProductId, 
-		CategoryId,
-        CategoryName,
+		ImageData,
+		MimeType,
+		IsPrimary,
 		CreatedBy,
 		DateCreated,
 		IsDeleted
 		) 
 	VALUES (
 		ProductId,
-		CategoryId,
-        CategoryName,
+		ImageData,
+		MimeType,
+		IsPrimary,
 		CreatedBy,
 		DateCreated,
 		0

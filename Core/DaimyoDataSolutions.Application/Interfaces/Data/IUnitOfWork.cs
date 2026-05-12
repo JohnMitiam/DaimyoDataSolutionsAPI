@@ -5,6 +5,7 @@
         IAffiliateRepository Affiliate { get; }
         IProductRepository Products { get; }
         IProductCategoriesRepository ProductCategories { get; }
+        IProductImagesRepository ProductImages { get; }
         ICategoryRepository Categories { get; }
 
         void CreateTransaction();

@@ -52,86 +52,105 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
                 resourceParameters.PageSize
             );
 
+            // 1. Updated Clause to include ProductImages join
             var baseFromClause = @"
-                FROM Products p 
-                LEFT JOIN ProductCategories pc ON p.Id = pc.ProductId AND pc.IsDeleted = 0
-                LEFT JOIN Category c ON pc.CategoryId = c.Id 
-                WHERE p.IsDeleted = 0 
-                AND (pc.IsDeleted = 0)";
+                                FROM Products p 
+                                LEFT JOIN ProductCategories pc ON p.Id = pc.ProductId AND pc.IsDeleted = 0
+                                LEFT JOIN Category c ON pc.CategoryId = c.Id 
+                                LEFT JOIN ProductImages pi ON p.Id = pi.ProductId AND pi.IsDeleted = 0
+                                WHERE p.IsDeleted = 0";
 
-            var dataSql = "SELECT p.*, pc.*, c.* " +
+            // 2. Added pi.* to the selection
+            var dataSql = "SELECT p.*, pc.*, c.*, pi.* " +
                           baseFromClause +
                           queryParamBuilder.GetSearchSQLQuery() +
                           queryParamBuilder.GetFilterSQLQuery();
 
             var paginationSQL = queryParamBuilder.GetPaginationSQLQuery().Replace("ORDER BY Id", "ORDER BY p.Id");
-
             var finalDataQuery = dataSql + paginationSQL;
-            var finalCountQuery = "SELECT COUNT(DISTINCT p.Id) " + baseFromClause + queryParamBuilder.GetSearchSQLQuery() + queryParamBuilder.GetFilterSQLQuery();
+
+            // IMPORTANT: Count must use DISTINCT p.Id because joins multiply row counts
+            var finalCountQuery = "SELECT COUNT(DISTINCT p.Id) " +
+                                 baseFromClause +
+                                 queryParamBuilder.GetSearchSQLQuery() +
+                                 queryParamBuilder.GetFilterSQLQuery();
 
             var productDict = new Dictionary<int, Products>();
 
-            await _dbSession.Connection.QueryAsync<Products, ProductCategories, Category, Products>(
+            await _dbSession.Connection.QueryAsync<Products, ProductCategories, Category, ProductImages, Products>(
                 finalDataQuery,
-                (product, pc, category) =>
+                (product, pc, category, pi) =>
                 {
                     if (!productDict.TryGetValue(product.Id, out var currentProduct))
                     {
                         currentProduct = product;
                         currentProduct.ProductCategories = new List<ProductCategories>();
+                        currentProduct.ProductImages = new List<ProductImages>();
                         productDict.Add(currentProduct.Id, currentProduct);
                     }
 
-                    if (pc != null && pc.Id != 0)
+                    if (pc != null && pc.Id != 0 && !currentProduct.ProductCategories.Any(x => x.Id == pc.Id))
                     {
                         pc.Category = category;
                         currentProduct.ProductCategories.Add(pc);
                     }
+
+                    if (pi != null && pi.Id != 0 && !currentProduct.ProductImages.Any(x => x.Id == pi.Id))
+                    {
+                        currentProduct.ProductImages.Add(pi);
+                    }
+
                     return currentProduct;
                 },
                 queryParamBuilder.Parameters,
                 _dbSession.Transaction,
-                splitOn: "Id,Id"
+                splitOn: "Id,Id,Id"
             );
 
             var totalCount = await _dbSession.Connection.ExecuteScalarAsync<int>(finalCountQuery, queryParamBuilder.Parameters);
-
             return (productDict.Values, totalCount);
         }
 
         public async Task<(IEnumerable<Products> products, int count)> GetMyProductAsync(string userId)
         {
             var baseFromClause = @"
-                FROM Products p 
-                LEFT JOIN ProductCategories pc ON p.Id = pc.ProductId AND pc.IsDeleted = 0
-                LEFT JOIN Category c ON pc.CategoryId = c.Id 
-                WHERE p.CreatedBy = @UserId AND p.IsDeleted = 0 ";
+                                FROM Products p 
+                                LEFT JOIN ProductCategories pc ON p.Id = pc.ProductId AND pc.IsDeleted = 0
+                                LEFT JOIN Category c ON pc.CategoryId = c.Id 
+                                LEFT JOIN ProductImages pi ON p.Id = pi.ProductId AND pi.IsDeleted = 0
+                                WHERE p.CreatedBy = @UserId AND p.IsDeleted = 0 ";
 
-            var sql = "SELECT p.*, pc.*, c.* " + baseFromClause + " ORDER BY p.DateCreated DESC";
-
+            var sql = "SELECT p.*, pc.*, c.*, pi.* " + baseFromClause + " ORDER BY p.DateCreated DESC";
             var productDict = new Dictionary<int, Products>();
 
-            await _dbSession.Connection.QueryAsync<Products, ProductCategories, Category, Products>(
+            await _dbSession.Connection.QueryAsync<Products, ProductCategories, Category, ProductImages, Products>(
                 sql,
-                (product, pc, category) =>
+                (product, pc, category, pi) =>
                 {
                     if (!productDict.TryGetValue(product.Id, out var currentProduct))
                     {
                         currentProduct = product;
                         currentProduct.ProductCategories = new List<ProductCategories>();
+                        currentProduct.ProductImages = new List<ProductImages>();
                         productDict.Add(currentProduct.Id, currentProduct);
                     }
 
-                    if (pc != null && pc.Id != 0)
+                    if (pc != null && pc.Id != 0 && !currentProduct.ProductCategories.Any(x => x.Id == pc.Id))
                     {
                         pc.Category = category;
                         currentProduct.ProductCategories.Add(pc);
                     }
+
+                    if (pi != null && pi.Id != 0 && !currentProduct.ProductImages.Any(x => x.Id == pi.Id))
+                    {
+                        currentProduct.ProductImages.Add(pi);
+                    }
+
                     return currentProduct;
                 },
                 new { UserId = userId },
                 _dbSession.Transaction,
-                splitOn: "Id,Id"
+                splitOn: "Id,Id,Id"
             );
 
             return (productDict.Values, productDict.Count);
@@ -139,35 +158,46 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
 
         public async Task<Products?> GetByIdAsync(int productId)
         {
-            var sql = "sp_GetProductById";
+            const string sql = "sp_GetProductById";
             var productDict = new Dictionary<int, Products>();
 
-            var result = await _dbSession.Connection.QueryAsync<Products, ProductCategories, Category, Products>(
+            await _dbSession.Connection.QueryAsync<Products, ProductCategories, Category, ProductImages, Products>(
                 sql,
-                (product, pc, category) =>
+                (product, pc, category, pi) =>
                 {
                     if (!productDict.TryGetValue(product.Id, out var currentProduct))
                     {
                         currentProduct = product;
                         currentProduct.ProductCategories = new List<ProductCategories>();
+                        currentProduct.ProductImages = new List<ProductImages>();
                         productDict.Add(currentProduct.Id, currentProduct);
                     }
-
-                    if (pc != null)
+                    if (pc != null && pc.Id != 0)
                     {
-                        pc.Category = category;
-                        pc.ProductId = currentProduct.Id;
-                        currentProduct.ProductCategories.Add(pc);
+                        if (!currentProduct.ProductCategories.Any(x => x.Id == pc.Id))
+                        {
+                            pc.Category = category;
+                            pc.ProductId = currentProduct.Id;
+                            currentProduct.ProductCategories.Add(pc);
+                        }
                     }
+                    if (pi != null && pi.Id != 0)
+                    {
+                        if (!currentProduct.ProductImages.Any(x => x.Id == pi.Id))
+                        {
+                            currentProduct.ProductImages.Add(pi);
+                        }
+                    }
+
                     return currentProduct;
                 },
                 new { p_ID = productId },
                 _dbSession.Transaction,
                 commandType: CommandType.StoredProcedure,
-                splitOn: "ProductCategoryId,CategoryId"
+                splitOn: "ProductCategoryId,CategoryId,ProductImageId"
             );
 
-            return result.FirstOrDefault();
+            return productDict.Values.FirstOrDefault();
         }
 
         public async Task<bool> UpdateAsync(Products product)
@@ -210,13 +240,38 @@ namespace DaimyoDataSolutions.Infrastructure.Data.Repositories
             return await DeleteAsync(product.Id);
         }
 
-        public async Task<bool> CategoryExistsAsync(int specificationId)
+        public async Task<IEnumerable<ProductCategories>> GetCategoriesByProductIdAsync(int productId)
+        {
+            const string sql = "SELECT * FROM ProductCategories WHERE ProductId = @ProductId AND IsDeleted = 0";
+            return await _dbSession.Connection.QueryAsync<ProductCategories>(sql, new { ProductId = productId }, _dbSession.Transaction);
+        }
+
+        public async Task<IEnumerable<ProductImages>> GetImagesByProductIdAsync(int productId)
+        {
+            const string sql = "SELECT * FROM ProductImages WHERE ProductId = @ProductId AND IsDeleted = 0";
+            return await _dbSession.Connection.QueryAsync<ProductImages>(sql, new { ProductId = productId }, _dbSession.Transaction);
+        }
+
+        public async Task<bool> CategoryExistsAsync(int categoryId)
         {
             var sql = "SELECT COUNT(1) FROM Category WHERE Id = @Id AND IsDeleted = 0";
 
             var count = await _dbSession.Connection.ExecuteScalarAsync<int>(
                 sql,
-                new { Id = specificationId },
+                new { Id = categoryId },
+                _dbSession.Transaction
+            );
+
+            return count > 0;
+        }
+
+        public async Task<bool> ImageExistAsync(int imageId)
+        {
+            const string sql = "SELECT COUNT(1) FROM ProductImages WHERE Id = @Id AND IsDeleted = 0";
+
+            var count = await _dbSession.Connection.ExecuteScalarAsync<int>(
+                sql,
+                new { Id = imageId },
                 _dbSession.Transaction
             );
 

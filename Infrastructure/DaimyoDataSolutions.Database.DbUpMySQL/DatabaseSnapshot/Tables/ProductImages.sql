@@ -1,8 +1,9 @@
-CREATE TABLE `ProductCategories` (
+CREATE TABLE `ProductImages` (
   `Id` int NOT NULL AUTO_INCREMENT,
   `ProductId` int NOT NULL,
-  `CategoryName` longtext NOT NULL,
-  `CategoryId` int DEFAULT NULL,
+  `ImageData` longblob NOT NULL,
+  `MimeType` longtext NOT NULL,
+  `IsPrimary` tinyint(1) NOT NULL,
   `CreatedBy` varchar(50) NULL,
   `DateCreated` datetime NOT NULL,
   `UpdatedBy` varchar(50) DEFAULT NULL,

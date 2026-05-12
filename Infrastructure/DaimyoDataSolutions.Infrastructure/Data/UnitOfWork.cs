@@ -9,6 +9,7 @@ namespace DaimyoDataSolutions.Infrastructure.Data
         private readonly IAffiliateRepository _affiliateRepository;
         private readonly IProductRepository _productRepository;
         private readonly IProductCategoriesRepository _productCategoriesRepository;
+        private readonly IProductImagesRepository _productImagesRepository;
         private readonly ICategoryRepository _categoryRepository;
 
         public UnitOfWork
@@ -17,6 +18,7 @@ namespace DaimyoDataSolutions.Infrastructure.Data
                 IAffiliateRepository affiliateRepository,
                 IProductRepository productRepository,
                 IProductCategoriesRepository productCategoriesRepository,
+                IProductImagesRepository productImagesRepository,
                 ICategoryRepository categoryRepository
             )
         {
@@ -24,12 +26,14 @@ namespace DaimyoDataSolutions.Infrastructure.Data
             _affiliateRepository = affiliateRepository;
             _productRepository = productRepository;
             _productCategoriesRepository = productCategoriesRepository;
+            _productImagesRepository = productImagesRepository;
             _categoryRepository = categoryRepository;
         }
 
         public IAffiliateRepository Affiliate => _affiliateRepository;
         public IProductRepository Products => _productRepository;
         public IProductCategoriesRepository ProductCategories => _productCategoriesRepository;
+        public IProductImagesRepository ProductImages => _productImagesRepository;
         public ICategoryRepository Categories => _categoryRepository;
 
         public void CreateTransaction()

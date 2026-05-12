@@ -5,8 +5,7 @@ BEGIN
 	SELECT 
             ID,
             ProductId,
-            CateegoryId,
-            IsActive
+            CateegoryId
 		FROM ProductCategories
         WHERE ID = ID;
 END
